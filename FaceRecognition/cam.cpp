@@ -1,6 +1,6 @@
 #include "cam.h"
 
-void Play(int WEBCAM, dlib::frontal_face_detector face_detector) {
+cv::Mat Play(int WEBCAM, dlib::frontal_face_detector face_detector) {
     cv::VideoCapture cap(WEBCAM); //몇번째 카메라 쓸찌 WEBCAM 번호에 따라 카메라가 달라짐
     if (!cap.isOpened()) { //안열려 있으면
         setColor(12); //빨간색
@@ -20,6 +20,13 @@ void Play(int WEBCAM, dlib::frontal_face_detector face_detector) {
             setColor(12);
             std::cout << "웹캠에서 이미지를 읽을 수 없습니다." << std::endl;
             break; //매트릭스로 읽을 수 없으면 건너뛰기
+        }
+
+        if (_kbhit()) {
+            if (_getch() == 32) {
+                std::cout << "check" << std::endl;
+                return temp;
+            }
         }
 
         dlib::cv_image<dlib::bgr_pixel> cimg(temp); //이미지를 매트릭스 형태로 저장

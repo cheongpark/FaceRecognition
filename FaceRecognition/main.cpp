@@ -62,7 +62,7 @@ int main() {
     std::cout << resnetmodelPath << "의 모델을 찾았습니다." << std::endl;
 
 
-    Play(1, face_detector);
+    Play(0, face_detector);
 }
     
 
