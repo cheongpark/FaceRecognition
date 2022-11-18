@@ -62,7 +62,10 @@ int main() {
     std::cout << resnetmodelPath << "의 모델을 찾았습니다." << std::endl;
 
 
-    Play(0, face_detector);
+    cv::Mat temp = Play(1, face_detector);
+    cv::imshow("test", temp);
+    cv::waitKey(0);
+    cv::destroyWindow;
 }
     
 

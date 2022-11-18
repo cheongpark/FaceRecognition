@@ -5,7 +5,7 @@ cv::Mat Play(int WEBCAM, dlib::frontal_face_detector face_detector) {
     if (!cap.isOpened()) { //안열려 있으면
         setColor(12); //빨간색
         std::cout << "카메라에 연결이 안됩니다. 연결 후 다시 시도해주세요." << std::endl;
-        return;
+        exit(0);
     }
     else { //열려있으면
         setColor(10); //초록색
@@ -47,4 +47,5 @@ cv::Mat Play(int WEBCAM, dlib::frontal_face_detector face_detector) {
 
     //영상 창을 강제로 닫았을 때
     std::cout << "영상 창이 닫혔습니다." << std::endl;
+    exit(0);
 }
