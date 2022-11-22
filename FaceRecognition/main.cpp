@@ -61,11 +61,29 @@ int main() {
     std::cout << TestlandmarkPath << "의 모델을 찾았습니다." << std::endl;
     std::cout << resnetmodelPath << "의 모델을 찾았습니다." << std::endl;
 
+    while (1) {
+        cv::Mat temp = Play(0, face_detector); //Play 이것도 opencv로 출력되게 바꾸기
+        cv::imshow("test", temp);
+        
+        int key = cv::waitKey(0);
+        switch ((char)key) {
+        case 'y':
+        case'Y':
+            //얼굴 비교하는 함수 넣고 또 할지 말지 해서 한다고 하면 어디 폴더로 출력하게 만들기
+            std::cout << "Yes" << std::endl;
+            break;
+        case 'n':
+        case 'N':
+            std::cout << "No" << std::endl;
+            break;
+        }
+        
+        cv::waitKey(0);
+        cv::destroyAllWindows();
 
-    cv::Mat temp = Play(1, face_detector);
-    cv::imshow("test", temp);
-    cv::waitKey(0);
-    cv::destroyWindow;
+        //계획 변경
+        //opencv를 이용해서 GUI 구현하기 모든 과정은 opencv Window로만 진행되며 opencv에 버튼 넣는 기능이나 스크롤바 넣을 수 있는 기능으로 사진 버튼도 만들고 그러면 될 듯
+    }
 }
     
 

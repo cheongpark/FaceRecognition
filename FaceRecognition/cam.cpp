@@ -40,7 +40,9 @@ cv::Mat Play(int WEBCAM, dlib::frontal_face_detector face_detector) {
             std::cout << "얼굴이 여러개 있네요." << std::endl;
             continue;
         }
-
+        //else {
+        //    dlib::draw_rectangle(cimg, faceRect[0], dlib::rgb_pixel(255, 0, 0), 3);
+        //}
         win.clear_overlay();
         win.add_overlay(faceRect);
     }
