@@ -13,15 +13,78 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="소스 파일\console">
+      <UniqueIdentifier>{a617b4dc-c226-4983-842c-bc499dd5c8f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\load">
+      <UniqueIdentifier>{77674653-fed6-46d8-be54-ee449a5dc47b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\screen">
+      <UniqueIdentifier>{d3fa6750-086a-495f-a300-57f201e659bb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\console">
+      <UniqueIdentifier>{94e37d03-e830-4d54-a876-b120cd613cad}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\webcam">
+      <UniqueIdentifier>{2e0e5c11-0533-428b-b32c-4826d03bf5a6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\load">
+      <UniqueIdentifier>{28e6fc4d-806d-47ea-8fab-c37be6e0b770}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\screen">
+      <UniqueIdentifier>{db231a51-863e-46b4-a31a-68b15ac6f843}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="헤더 파일\webcam">
+      <UniqueIdentifier>{a6b866dc-4ff8-4038-b2a3-1cde7d4805a7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="소스.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="cvui.h">
+    <ClInclude Include="include\stdafx.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="include\webcam\cam.h">
+      <Filter>헤더 파일\webcam</Filter>
+    </ClInclude>
+    <ClInclude Include="include\console\console_control.h">
+      <Filter>헤더 파일\console</Filter>
+    </ClInclude>
+    <ClInclude Include="include\screen\cvui.h">
+      <Filter>헤더 파일\screen</Filter>
+    </ClInclude>
+    <ClInclude Include="include\load\load_file.h">
+      <Filter>헤더 파일\load</Filter>
+    </ClInclude>
+    <ClInclude Include="include\main.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\screen\manager.h">
+      <Filter>헤더 파일\screen</Filter>
+    </ClInclude>
+    <ClInclude Include="include\screen\function.h">
+      <Filter>헤더 파일\screen</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\stdafx.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="src\console\console_control.cpp">
+      <Filter>소스 파일\console</Filter>
+    </ClCompile>
+    <ClCompile Include="src\webcam\cam.cpp">
+      <Filter>소스 파일\webcam</Filter>
+    </ClCompile>
+    <ClCompile Include="src\load\load_file.cpp">
+      <Filter>소스 파일\load</Filter>
+    </ClCompile>
+    <ClCompile Include="src\screen\manager.cpp">
+      <Filter>소스 파일\screen</Filter>
+    </ClCompile>
+    <ClCompile Include="src\screen\function.cpp">
+      <Filter>소스 파일\screen</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
