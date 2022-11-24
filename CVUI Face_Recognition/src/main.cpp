@@ -30,9 +30,9 @@ using anet_type = dlib::loss_metric< dlib::fc_no_bias<128, dlib::avg_pool_everyt
     >>>>>>>>>>>>;
 
 int main() {
-    Screen screen = Screen(1280, 720);
-    //screen.getScreen();
+    screenInit(1280, 720);
 
+    /*
     setColor(COLOR::DARK_WHITE);
 
     dlib::frontal_face_detector face_detector = dlib::get_frontal_face_detector();
@@ -52,12 +52,8 @@ int main() {
     }
     std::cout << TestlandmarkPath << "의 모델을 찾았습니다." << std::endl;
     std::cout << resnetmodelPath << "의 모델을 찾았습니다." << std::endl;
-
-
-    cv::Mat temp = Play(1, face_detector);
-    cv::imshow("test", temp);
-    cv::waitKey(0);
-    cv::destroyWindow;
+    */
+    
 }
 
 
