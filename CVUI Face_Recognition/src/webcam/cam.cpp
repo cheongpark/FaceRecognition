@@ -1,6 +1,46 @@
 #include "stdafx.h"
 #include "webcam/cam.h"
 
+void camSetting(cv::VideoCapture& cap, int width, int height, int camNum) {
+    cap.open(camNum); //OpenCV의 웹캠의 번호를 세팅하는 것
+
+    if (!cap.isOpened()) { //웹캠 찾지 못하면
+        setColor(COLOR::RED);
+        std::cout << "Error: 웹캠을 찾지 못했습니다. \a" << std::endl;
+        setColor();
+    }
+    else {
+        setColor(COLOR::GREEN);
+        std::cout << "Success: 웹캠을 찾았습니다." << std::endl;
+        setColor();
+    }
+
+    //이거 왜 안됨? 되게 만들어야 이미지가 들어감
+    //이거 안하면 640 * 480으로 밖에 안됨
+    cap.set(cv::CAP_PROP_FRAME_WIDTH, width); //웹캠의 가로 사이즈를 설정함
+    cap.set(cv::CAP_PROP_FRAME_HEIGHT, height); //웹캠의 세로 사이즈를 설정함
+}
+
+void capFaceImage(cv::Mat& frame, cv::VideoCapture& cap) {
+    //실패 메세지는 screen의 puttext로 화면 내에 넣을 생각임.
+    struct Face face; //아래 cvFaceRect를 쓰기 위함임..
+
+    if (!cap.isOpened()) {
+        setColor(COLOR::RED);
+        std::cout << "Error: 웹캠을 찾지 못했습니다." << std::endl;
+        setColor();
+    }
+
+    if (!cap.read(frame)) {
+        setColor(COLOR::RED);
+        std::cout << "Error: 웹캠에서 이미지를 읽을 수 없습니다." << std::endl;
+        setColor();
+    }
+
+    face.cvFaceRect(frame);
+}
+
+/*
 cv::Mat Play(int WEBCAM, dlib::frontal_face_detector face_detector) {
     cv::VideoCapture cap(WEBCAM); //몇번째 카메라 쓸찌 WEBCAM 번호에 따라 카메라가 달라짐
     if (!cap.isOpened()) { //안열려 있으면
@@ -49,3 +89,4 @@ cv::Mat Play(int WEBCAM, dlib::frontal_face_detector face_detector) {
     std::cout << "영상 창이 닫혔습니다." << std::endl;
     exit(0);
 }
+*/

@@ -30,6 +30,12 @@ using anet_type = dlib::loss_metric< dlib::fc_no_bias<128, dlib::avg_pool_everyt
     >>>>>>>>>>>>;
 
 int main() {
+    std::string spPath = "Dlib_Model/shape_predictor_5_face_landmarks.dat";
+    std::string fastspPath = "Dlib_Model/shape_predictor_68_face_landmarks_GTX.dat";
+
+    struct Face face;
+    face.setSpPath(spPath, fastspPath);
+
     screenInit(1280, 720);
 
     /*

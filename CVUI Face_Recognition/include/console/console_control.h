@@ -20,4 +20,6 @@ enum COLOR {
 	WHITE = 15
 };
 
-void setColor(short text = COLOR::DARK_WHITE, short background = COLOR::BLACK);
+void setColor(short textColor = COLOR::DARK_WHITE, short background = COLOR::BLACK);
+
+void ErrorExit();

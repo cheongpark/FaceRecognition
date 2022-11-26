@@ -13,6 +13,9 @@ void screenInit(int width, int height) {
 	//opencv 윈도우 이름 정하는거
 	cvui::init(WINDOW_NAME);
 
+	cv::VideoCapture cap;
+	camSetting(cap, height, height, 1);
+
 	int LRMargin = 20;
 	int Margin = 30;
 
@@ -20,7 +23,7 @@ void screenInit(int width, int height) {
 
 	cv::Mat frame(height, width, CV_8UC3);
 	while (true) {
-		frameRender(frame, LRMargin, Margin, useLand);
+		frameRender(frame, cap, LRMargin, Margin, useLand);
 		cvui::update();
 
 		cv::imshow(WINDOW_NAME, frame);
@@ -31,7 +34,7 @@ void screenInit(int width, int height) {
 	}
 }
 
-void frameRender(cv::Mat &frame, const int &LRMargin, const int &Margin, bool &useLand) {
+void frameRender(cv::Mat &frame, cv::VideoCapture &cap, const int &LRMargin, const int &Margin, bool &useLand) {
 	//ScreenW = frame.cols, ScreenH = frame.rows
 	//std::cout << frame.cols << " " << frame.rows << std::endl;
 	
@@ -58,13 +61,16 @@ void frameRender(cv::Mat &frame, const int &LRMargin, const int &Margin, bool &u
 
 	*/
 	
-	cv::Mat tempImg(frame.rows, frame.rows, CV_8UC3);
-	tempImg = cv::Scalar(0x3D, 0x9F, 0x4E);
-	putImage(tempImg, frame, cv::Rect(0, 0, frame.rows, frame.rows));
+	cv::Mat camImg(frame.rows, frame.rows, CV_8UC3);
+	capFaceImage(camImg, cap);
+
+	std::cout << frame.rows << " " << camImg.rows << " " << frame.cols << " " << camImg.cols << std::endl;
+	//cv::imshow("Test", camImg);
+	//camImg = cv::Scalar(0x3D, 0x9F, 0x4E);
+	putImage(camImg, frame, cv::Rect(0, 0, frame.rows, frame.rows));
 	if (true) {
 		_putText(frame, "웹캠 연결 없음", cv::Point(frame.rows / 2, frame.rows / 2), 1, "맑은 고딕", FW_BOLD, 6, true, RGBScale(0xED, 0xED, 0xED), RGBScale(0x4E, 0x9F, 0x3D));
 	}
-
 	cv::line(frame, cv::Point(frame.rows + 1, 0), cv::Point(frame.rows + 1, frame.rows), cv::Scalar(0xED, 0xED, 0xED), 2);
 }
 

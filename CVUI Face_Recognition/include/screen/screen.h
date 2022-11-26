@@ -6,6 +6,8 @@
 
 #include "screen/cvui.h"
 
+#include "webcam/cam.h"
+
 #define CVUI_IMPLEMENTATION
 #define WINDOW_NAME	"Face Recognition (연예인 닮음 찾기)"
 
@@ -20,7 +22,7 @@ struct RGBScale {
 
 void screenInit(int width, int height);
 
-void frameRender(cv::Mat& frame, const int& LRMargin, const int& Margin, bool& useLand);
+void frameRender(cv::Mat& frame, cv::VideoCapture& cap, const int& LRMargin, const int& Margin, bool& useLand);
 
 void putImage(const cv::Mat Image, cv::Mat& outImage, const cv::Rect pos);
 
