@@ -34,7 +34,7 @@ int main() {
     std::string fastspPath = "Dlib_Model/shape_predictor_68_face_landmarks_GTX.dat";
 
     struct Face face;
-    face.setSpPath(spPath, fastspPath);
+    face.loadSpModel(spPath, fastspPath);
 
     screenInit(1280, 720);
 

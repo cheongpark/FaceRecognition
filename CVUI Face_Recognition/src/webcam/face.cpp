@@ -1,11 +1,11 @@
 #include "stdafx.h"
 #include "webcam/face.h"
 
-cv::Rect Face::dlibRectangleToOpenCV(dlib::rectangle r) {
+cv::Rect Face::dlibRectangleToOpenCV(dlib::rectangle r) { //속도가 느려질 것 같아서 사용 X
     return cv::Rect(cv::Point2i((int)r.left(), (int)r.top()), cv::Point2i((int)r.right(), (int)r.bottom()));
 }
 
-void Face::setSpPath(std::string spPath, std::string fastspPath) {
+void Face::loadSpModel(std::string spPath, std::string fastspPath) {
     if (access(spPath.c_str(), 0) != -1) {
         setColor(COLOR::GREEN);
         std::cout << spPath << " 모델을 찾았습니다." << std::endl;
@@ -29,13 +29,10 @@ void Face::setSpPath(std::string spPath, std::string fastspPath) {
         setColor();
         ErrorExit();
     }
-}
 
-void Face::loadSpModel() {
-    dlib::deserialize(spName) >> sp;
-    dlib::deserialize(fastspName) >> fastsp;
+    dlib::deserialize(spPath) >> sp;
+    dlib::deserialize(fastspPath) >> fastsp;
 }
-
 
 void Face::cvFaceRect(cv::Mat &img) {
     dlib::cv_image<dlib::bgr_pixel> cimg(img);
@@ -49,8 +46,9 @@ void Face::cvFaceRect(cv::Mat &img) {
     else if (face.size() == 0)
         return;
 
-    dlib::shape_predictor shape;
+    //std::cout << face.size() << std::endl;
 
-    cv::rectangle(img, dlibRectangleToOpenCV(dlib::get_face_chip_details(shape(cimg, face[0]), 1, 0.25).rect), cv::Scalar(255, 0, 0), 3, 4, 0);
+    auto faceRect = dlib::get_face_chip_details(fastsp(cimg, face[0]), 1, 0.25).rect; //이거 오류남 다음의 나 ㅅㄱ
+
+    cv::rectangle(img, cv::Rect(faceRect.left(), faceRect.top(), faceRect.right(),faceRect.bottom()), cv::Scalar(255, 0, 0), 3, 4, 0);
 }
-

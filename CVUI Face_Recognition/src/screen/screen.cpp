@@ -64,13 +64,18 @@ void frameRender(cv::Mat &frame, cv::VideoCapture &cap, const int &LRMargin, con
 	cv::Mat camImg(frame.rows, frame.rows, CV_8UC3);
 	capFaceImage(camImg, cap);
 
-	std::cout << frame.rows << " " << camImg.rows << " " << frame.cols << " " << camImg.cols << std::endl;
-	//cv::imshow("Test", camImg);
-	//camImg = cv::Scalar(0x3D, 0x9F, 0x4E);
-	putImage(camImg, frame, cv::Rect(0, 0, frame.rows, frame.rows));
-	if (true) {
-		_putText(frame, "À¥Ä· ¿¬°á ¾øÀ½", cv::Point(frame.rows / 2, frame.rows / 2), 1, "¸¼Àº °íµñ", FW_BOLD, 6, true, RGBScale(0xED, 0xED, 0xED), RGBScale(0x4E, 0x9F, 0x3D));
-	}
+
+	cv::resize(camImg, camImg, cv::Size(frame.rows, frame.rows));
+
+	std::cout << "check" << std::endl;
+
+	cv::imshow("test", camImg);
+
+	//putImage(camImg, frame, cv::Rect(0, 0, frame.rows, frame.rows));
+	//if (true) {
+	//	_putText(frame, "À¥Ä· ¿¬°á ¾øÀ½", cv::Point(frame.rows / 2, frame.rows / 2), 1, "¸¼Àº °íµñ", FW_BOLD, 6, true, RGBScale(0xED, 0xED, 0xED), RGBScale(0x4E, 0x9F, 0x3D));
+	//}
+
 	cv::line(frame, cv::Point(frame.rows + 1, 0), cv::Point(frame.rows + 1, frame.rows), cv::Scalar(0xED, 0xED, 0xED), 2);
 }
 
@@ -168,6 +173,9 @@ void _putText(cv::Mat& img, const cv::String& text, const cv::Point& org, const 
 	::DeleteDC(hdc);
 }
 
+void webcamViewerMessage(std::string& text) {
+	_putText(frame, "À¥Ä· ¿¬°á ¾øÀ½", cv::Point(frame.rows / 2, frame.rows / 2), 1, "¸¼Àº °íµñ", FW_BOLD, 6, true, RGBScale(0xED, 0xED, 0xED), RGBScale(0x4E, 0x9F, 0x3D));
+}
 /*
 int main()
 {
