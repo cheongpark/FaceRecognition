@@ -225,6 +225,7 @@ int main(int argv, char* args) {
 			std::cout << "check" << std::endl;
 			//ÇÁ·¹ÀÓ ·»´õ¸µ
 			{
+				//cols°¡ °¡·Î , rows°¡ ¼¼·Î
 				//¹è°æ ÄÃ·¯ ÁöÁ¤
 				frame = cv::Scalar(0x11, 0x11, 0x11);
 
@@ -237,16 +238,13 @@ int main(int argv, char* args) {
 				_putText(frame, faceText, cv::Point(frame.rows + LRMargin, 100), 0, "¸¼Àº °íµñ", FW_BOLD, 3, true, (faceNum >= 2 ? RGBScale(0xDA, 0x00, 0x37) : RGBScale(0xED, 0xED, 0xED)), RGBScale(0x11, 0x11, 0x11));
 
 				cvui::checkbox(frame, frame.cols - (200 + LRMargin), 100, "", &useLand, RGBScale(0xED, 0xED, 0xED).rgb, 10);
-				/*
-				if (cvui::button(frame, std::lround(scaling * 50), std::lround(scaling * 60), "Colored Button", scaling * cvui::DEFAULT_FONT_SCALE, 0xa05050)) {
-					std::cout << "Button clicked" << std::endl;
+				if (cvui::button(frame, frame.rows + LRMargin, frame.rows - 100, "Capture", 0.5, 0xFF3333)) {
+					setColor(COLOR::PURPLE);
+					std::cout << "Capture" << std::endl;
+					setColor();
+
+					//3ÃÊ ¼¼°í ÂûÄ¬ Âï°Ô ÇÏ±â 
 				}
-
-				cvui::button(frame, std::lround(scaling * 200), std::lround(scaling * 70), "Button with large label", scaling * cvui::DEFAULT_FONT_SCALE);
-
-				cvui::button(frame, std::lround(scaling * 410), std::lround(scaling * 70), std::lround(scaling * 15), std::lround(scaling * 15), "x", scaling * cvui::DEFAULT_FONT_SCALE);
-
-				*/
 
 				cv::Mat camImg(frame.rows, frame.rows, CV_8UC3);
 
