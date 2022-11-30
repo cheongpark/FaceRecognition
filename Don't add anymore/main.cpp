@@ -8,12 +8,15 @@
 #define SCREENW 1280
 #define SCREENH 720
 
-#define WEBCAMW 1280
-#define WEBCAMH 720 //원래 크기대로 입력받고 나머지는 짤라야 할 듯
+//학교 노트북 1280 * 720
+//폰카 640 * 480
+
+#define WEBCAMW 640
+#define WEBCAMH 480 //원래 크기대로 입력받고 나머지는 짤라야 할 듯
 
 #define WEBCAMCUT (WEBCAMW - WEBCAMH) / 2
 
-#define camNum 0
+#define camNum 1
 
 enum COLOR {
     BLACK = 0,
@@ -217,7 +220,7 @@ int main(int argv, char* args) {
 		//이건 이 카메라의 원래 크기대로 설정하고 거기에서 짤라야 함
 		//여기선 이 부분 지금 안됨
 		cap.set(cv::CAP_PROP_FRAME_WIDTH, WEBCAMW); //웹캠의 가로 사이즈를 설정함
-		cap.set(cv::CAP_PROP_FRAME_HEIGHT, WEBCAMH); //웹캠의 세로 사이즈를 설정함
+		cap.set(cv::CAP_PROP_FRAME_HEIGHT, WEBCAMH); //웹캠의 세로 사이즈를 설정함ㅍ
 
 		//cv::Mat Test;
 		//cap.read(Test);
@@ -231,18 +234,33 @@ int main(int argv, char* args) {
 		cv::Mat camImg(WEBCAMH, WEBCAMW, CV_8UC3); //일단 여기에서 16:9로 맞추고 나중에 정사각형으로 바꿀꺼임
 
 		cv::Mat frame(SCREENH, SCREENW, CV_8UC3);
+
+		frame = cv::Scalar(0x11, 0x11, 0x11);
+		_putText(frame, "Face Recognition", cv::Point(frame.cols - ((frame.cols - frame.rows) / 2), 30), 1, "맑은 고딕", FW_BOLD, 6, true, RGBScale(0xED, 0xED, 0xED), RGBScale(0x11, 0x11, 0x11));
+		cv::line(frame, cv::Point(frame.rows + 1, 0), cv::Point(frame.rows + 1, frame.rows), cv::Scalar(0xED, 0xED, 0xED), 2);
+		//위에서 미리 하고 매번 고정 된 위치에 나오는게 아닌 것들 부분에만 배경 색을 덮어서 업데이트 되게 하는 것.
+
+		//int frameCnt = 0;
+		//float timeElapsed = 0.0f;
+
 		while (true) {
 			std::cout << "check" << std::endl;
+
+			{ //fps 계산
+				//frameCnt++;
+				//if((mTimer))
+			}
+
 			//프레임 렌더링
 			{
 				//cols가 가로 , rows가 세로
 				//배경 컬러 지정
-				frame = cv::Scalar(0x11, 0x11, 0x11);
+				//frame = cv::Scalar(0x11, 0x11, 0x11);
+				cv::rectangle(frame, cv::Rect(cv::Point2i(frame.rows + 1 + 2, 30 + 60), cv::Point2i(frame.cols, frame.rows)), cv::Scalar(0x11, 0x11, 0x11), -1);
 
 				//메인 제목
-				_putText(frame, "Face Recognition", cv::Point(frame.cols - ((frame.cols - frame.rows) / 2), 30), 1, "맑은 고딕", FW_BOLD, 6, true, RGBScale(0xED, 0xED, 0xED), RGBScale(0x11, 0x11, 0x11));
+				//_putText(frame, "Face Recognition", cv::Point(frame.cols - ((frame.cols - frame.rows) / 2), 30), 1, "맑은 고딕", FW_BOLD, 6, true, RGBScale(0xED, 0xED, 0xED), RGBScale(0x11, 0x11, 0x11));
 
-				
 				cvui::checkbox(frame, frame.cols - (200 + LRMargin), 100, "", &useLand, RGBScale(0xED, 0xED, 0xED).rgb, 10);
 				if (cvui::button(frame, frame.rows + LRMargin, frame.rows - 100, "Capture", 0.5, 0xFF3333)) {
 					setColor(COLOR::PURPLE);
@@ -258,6 +276,9 @@ int main(int argv, char* args) {
 						std::cout << "웹캠에서 이미지를 읽을 수 없습니다." << std::endl;
 						goto webcamEnd; //매트릭스로 읽을 수 없으면 건너뛰기
 					}
+					
+					//여기서 미리 바꾸는 이유는 화면에서 표시되지 않는 부분도 감지하기 때문
+					camImg = camImg(cv::Range(0, WEBCAMH), cv::Range(WEBCAMCUT, WEBCAMCUT + WEBCAMH));
 
 					dlib::cv_image<dlib::bgr_pixel> cimg(camImg); //이미지를 매트릭스 형태로 저장
 					auto face = detector(cimg);
@@ -281,16 +302,18 @@ int main(int argv, char* args) {
 				}
 
 				webcamEnd:
-				camImg = camImg(cv::Range(0, WEBCAMH), cv::Range(WEBCAMCUT, WEBCAMCUT + WEBCAMH));
-				cv::resize(camImg, camImg, cv::Size(frame.rows, frame.rows));
-				//cv::imshow("test", camImg);
+				
+				if (true) { //카메라를 읽어야 할때
+					cv::resize(camImg, camImg, cv::Size(frame.rows, frame.rows));
+					//cv::imshow("test", camImg);
 
-				putImage(camImg, frame, cv::Rect(0, 0, frame.rows, frame.rows));
-				//if (true) {
-				//	_putText(frame, "웹캠 연결 없음", cv::Point(frame.rows / 2, frame.rows / 2), 1, "맑은 고딕", FW_BOLD, 6, true, RGBScale(0xED, 0xED, 0xED), RGBScale(0x4E, 0x9F, 0x3D));
-				//}
+					putImage(camImg, frame, cv::Rect(0, 0, frame.rows, frame.rows));
+					//if (true) {
+					//	_putText(frame, "웹캠 연결 없음", cv::Point(frame.rows / 2, frame.rows / 2), 1, "맑은 고딕", FW_BOLD, 6, true, RGBScale(0xED, 0xED, 0xED), RGBScale(0x4E, 0x9F, 0x3D));
+					//}
+				}
 
-				cv::line(frame, cv::Point(frame.rows + 1, 0), cv::Point(frame.rows + 1, frame.rows), cv::Scalar(0xED, 0xED, 0xED), 2);
+				//cv::line(frame, cv::Point(frame.rows + 1, 0), cv::Point(frame.rows + 1, frame.rows), cv::Scalar(0xED, 0xED, 0xED), 2);
 			}
 
 			cvui::update();
