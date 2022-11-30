@@ -8,10 +8,12 @@
 #define SCREENW 1280
 #define SCREENH 720
 
-#define WEBCAMW SCREENH
-#define WEBCAMH SCREENH
+#define WEBCAMW 1280
+#define WEBCAMH 720 //원래 크기대로 입력받고 나머지는 짤라야 할 듯
 
-#define camNum 1
+#define WEBCAMCUT (WEBCAMW - WEBCAMH) / 2
+
+#define camNum 0
 
 enum COLOR {
     BLACK = 0,
@@ -212,13 +214,21 @@ int main(int argv, char* args) {
 			setColor();
 		}
 
+		//이건 이 카메라의 원래 크기대로 설정하고 거기에서 짤라야 함
+		//여기선 이 부분 지금 안됨
 		cap.set(cv::CAP_PROP_FRAME_WIDTH, WEBCAMW); //웹캠의 가로 사이즈를 설정함
 		cap.set(cv::CAP_PROP_FRAME_HEIGHT, WEBCAMH); //웹캠의 세로 사이즈를 설정함
+
+		//cv::Mat Test;
+		//cap.read(Test);
+		//cv::imshow("test", Test);
 
 		int LRMargin = 20;
 		int Margin = 30;
 
 		bool useLand = true;
+
+		cv::Mat camImg(WEBCAMH, WEBCAMW, CV_8UC3); //일단 여기에서 16:9로 맞추고 나중에 정사각형으로 바꿀꺼임
 
 		cv::Mat frame(SCREENH, SCREENW, CV_8UC3);
 		while (true) {
@@ -232,11 +242,7 @@ int main(int argv, char* args) {
 				//메인 제목
 				_putText(frame, "Face Recognition", cv::Point(frame.cols - ((frame.cols - frame.rows) / 2), 30), 1, "맑은 고딕", FW_BOLD, 6, true, RGBScale(0xED, 0xED, 0xED), RGBScale(0x11, 0x11, 0x11));
 
-				int faceNum = 1;
-				char faceText[40];
-				sprintf_s(faceText, "얼굴 %d명 감지 되었습니다.", faceNum);
-				_putText(frame, faceText, cv::Point(frame.rows + LRMargin, 100), 0, "맑은 고딕", FW_BOLD, 3, true, (faceNum >= 2 ? RGBScale(0xDA, 0x00, 0x37) : RGBScale(0xED, 0xED, 0xED)), RGBScale(0x11, 0x11, 0x11));
-
+				
 				cvui::checkbox(frame, frame.cols - (200 + LRMargin), 100, "", &useLand, RGBScale(0xED, 0xED, 0xED).rgb, 10);
 				if (cvui::button(frame, frame.rows + LRMargin, frame.rows - 100, "Capture", 0.5, 0xFF3333)) {
 					setColor(COLOR::PURPLE);
@@ -245,8 +251,6 @@ int main(int argv, char* args) {
 
 					//3초 세고 찰칵 찍게 하기 
 				}
-
-				cv::Mat camImg(frame.rows, frame.rows, CV_8UC3);
 
 				if (true) { //카메라를 읽어야 할때
 					if (!cap.read(camImg)) {
@@ -257,6 +261,11 @@ int main(int argv, char* args) {
 
 					dlib::cv_image<dlib::bgr_pixel> cimg(camImg); //이미지를 매트릭스 형태로 저장
 					auto face = detector(cimg);
+
+					char faceText[30];
+					sprintf_s(faceText, "얼굴 %d명 감지 되었습니다.", face.size());
+					_putText(frame, faceText, cv::Point(frame.rows + LRMargin, 100), 0, "맑은 고딕", FW_BOLD, 3, true, (face.size() >= 2 ? RGBScale(0xDA, 0x00, 0x37) : RGBScale(0xED, 0xED, 0xED)), RGBScale(0x11, 0x11, 0x11));
+
 					if (face.size() >= 2) {
 						setColor(12);
 						std::cout << "얼굴이 여러개 있네요." << std::endl;
@@ -272,7 +281,7 @@ int main(int argv, char* args) {
 				}
 
 				webcamEnd:
-				
+				camImg = camImg(cv::Range(0, WEBCAMH), cv::Range(WEBCAMCUT, WEBCAMCUT + WEBCAMH));
 				cv::resize(camImg, camImg, cv::Size(frame.rows, frame.rows));
 				//cv::imshow("test", camImg);
 
