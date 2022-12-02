@@ -16,7 +16,7 @@
 
 #define WEBCAMCUT (WEBCAMW - WEBCAMH) / 2
 
-#define camNum 1
+#define camNum 0
 
 enum COLOR {
     BLACK = 0,
@@ -231,6 +231,13 @@ int main(int argv, char* args) {
 
 		bool useLand = true;
 
+		clock_t start, timer;
+		bool iscapture = false;
+		int captureReadyCount = 0;
+
+		char CaptureCount[5] = "";
+
+		cv::Mat CaptureImg(WEBCAMH, WEBCAMW, CV_8UC3); //정사각형 캡쳐하면 이 곳으로 넘길꺼
 		cv::Mat camImg(WEBCAMH, WEBCAMW, CV_8UC3); //일단 여기에서 16:9로 맞추고 나중에 정사각형으로 바꿀꺼임
 
 		cv::Mat frame(SCREENH, SCREENW, CV_8UC3);
@@ -260,15 +267,6 @@ int main(int argv, char* args) {
 
 				//메인 제목
 				//_putText(frame, "Face Recognition", cv::Point(frame.cols - ((frame.cols - frame.rows) / 2), 30), 1, "맑은 고딕", FW_BOLD, 6, true, RGBScale(0xED, 0xED, 0xED), RGBScale(0x11, 0x11, 0x11));
-
-				cvui::checkbox(frame, frame.cols - (200 + LRMargin), 100, "", &useLand, RGBScale(0xED, 0xED, 0xED).rgb, 10);
-				if (cvui::button(frame, frame.rows + LRMargin, frame.rows - 100, "Capture", 0.5, 0xFF3333)) {
-					setColor(COLOR::PURPLE);
-					std::cout << "Capture" << std::endl;
-					setColor();
-
-					//3초 세고 찰칵 찍게 하기 
-				}
 
 				if (true) { //카메라를 읽어야 할때
 					if (!cap.read(camImg)) {
@@ -311,6 +309,48 @@ int main(int argv, char* args) {
 					//if (true) {
 					//	_putText(frame, "웹캠 연결 없음", cv::Point(frame.rows / 2, frame.rows / 2), 1, "맑은 고딕", FW_BOLD, 6, true, RGBScale(0xED, 0xED, 0xED), RGBScale(0x4E, 0x9F, 0x3D));
 					//}
+				}
+
+				if (cvui::button(frame, frame.rows + LRMargin, frame.rows - 100, "Capture", 0.5, 0xFF3333)) {
+					setColor(COLOR::PURPLE);
+					std::cout << "Capture" << std::endl;
+					setColor();
+
+					iscapture = true;
+					captureReadyCount = 0;
+					sprintf_s(CaptureCount, "");
+
+					start = clock();
+					//3초 세고 찰칵 찍게 하기 
+				}
+
+				if (iscapture) {
+					timer = clock();
+					
+					if (timer - start >= (clock_t)3000) {
+						iscapture = false;
+
+						setColor(COLOR::GREEN);
+						std::cout << "Capture!" << std::endl;
+						setColor();
+
+						//캡쳐한 후 captureImg로 넘기고 따른 곳으로 잠시 넘겨서 계산한 뒤에 다시 움직이게 할 예정
+						cap.read(CaptureImg);
+						CaptureImg = CaptureImg(cv::Range(0, WEBCAMH), cv::Range(WEBCAMCUT, WEBCAMCUT + WEBCAMH));
+						cv::imshow("test2", CaptureImg);
+						cv::imwrite("./CaptureImage/capture.jpg", CaptureImg);
+					}
+					if (iscapture && timer - start >= (clock_t)(1000 * captureReadyCount)) {
+						sprintf_s(CaptureCount, "%d", 3 - captureReadyCount);
+						setColor(COLOR::AQUA);
+						std::cout << 3 - captureReadyCount++ << std::endl;
+						setColor();
+					}
+
+					if (CaptureCount != "")
+						_putText(frame, CaptureCount, cv::Point(frame.rows / 2, frame.rows / 2), 1, "맑은 고딕", FW_BOLD, 10, true, RGBScale(0xED, 0xED, 0xED), RGBScale(0x4E, 0x9F, 0x3D));
+
+					//std::cout << clock() << std::endl;
 				}
 
 				//cv::line(frame, cv::Point(frame.rows + 1, 0), cv::Point(frame.rows + 1, frame.rows), cv::Scalar(0xED, 0xED, 0xED), 2);
