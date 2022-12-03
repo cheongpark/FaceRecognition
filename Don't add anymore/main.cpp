@@ -5,6 +5,12 @@
 
 #define WINDOW_NAME	"Face Recognition (연예인 닮음 찾기)"
 
+#define Celebrity_Comparison true
+#define CelebrityImagePath "celebrity"
+#define loadImageView true
+#define loadImageViewDelay 100
+#define Calculate_Comparison true
+
 #define SCREENW 1280
 #define SCREENH 720
 
@@ -16,7 +22,35 @@
 
 #define WEBCAMCUT (WEBCAMW - WEBCAMH) / 2
 
-#define camNum 0
+#define camNum 1
+
+template <template <int, template<typename>class, int, typename> class block, int n, template<typename>class bn, typename subnet>
+using residual = dlib::add_prev1<block<n, bn, 1, dlib::tag1<subnet>>>;
+
+template <template <int, template<typename>class, int, typename> class block, int n, template<typename>class bn, typename subnet>
+using residual_down = dlib::add_prev2<dlib::avg_pool<2, 2, 2, 2, dlib::skip1<dlib::tag2<block<n, bn, 2, dlib::tag1<subnet>>>>>>;
+
+template <int n, template <typename> class bn, int stride, typename subnet>
+using block = bn<dlib::con<n, 3, 3, 1, 1, dlib::relu<bn<dlib::con<n, 3, 3, stride, stride, subnet>>>>>;
+
+template <int n, typename subnet> using ares = dlib::relu<residual<block, n, dlib::affine, subnet>>;
+template <int n, typename subnet> using ares_down = dlib::relu<residual_down<block, n, dlib::affine, subnet>>;
+
+template <typename subnet> using alevel0 = ares_down<256, subnet>;
+template <typename subnet> using alevel1 = ares<256, ares<256, ares_down<256, subnet>>>;
+template <typename subnet> using alevel2 = ares<128, ares<128, ares_down<128, subnet>>>;
+template <typename subnet> using alevel3 = ares<64, ares<64, ares<64, ares_down<64, subnet>>>>;
+template <typename subnet> using alevel4 = ares<32, ares<32, ares<32, subnet>>>;
+
+using anet_type = dlib::loss_metric< dlib::fc_no_bias<128, dlib::avg_pool_everything<
+	alevel0<
+	alevel1<
+	alevel2<
+	alevel3<
+	alevel4<
+	dlib::max_pool<3, 3, 2, 2, dlib::relu<dlib::affine<dlib::con<32, 7, 7, 2, 2,
+	dlib::input_rgb_image_sized<150>
+	>>>>>>>>>>>>;
 
 enum COLOR {
     BLACK = 0,
@@ -62,7 +96,7 @@ void _putText(cv::Mat& img, const cv::String& text, const cv::Point& org, const 
 	int width = img.cols;
 	int height = fontSize * 3 / 2;
 
-	HDC hdc = ::CreateCompatibleDC(NULL);
+	HDC hdc = CreateCompatibleDC(NULL);
 
 	//채우는 방법? 인 듯, 색을 이걸로 정하면 되는 듯
 	HBRUSH hBrush = CreateSolidBrush(bkcolor.rgb);
@@ -75,7 +109,7 @@ void _putText(cv::Mat& img, const cv::String& text, const cv::Point& org, const 
 	rect.bottom = height;
 
 	BITMAPINFOHEADER header;
-	::ZeroMemory(&header, sizeof(BITMAPINFOHEADER));
+	ZeroMemory(&header, sizeof(BITMAPINFOHEADER));
 	header.biSize = sizeof(BITMAPINFOHEADER);
 	header.biWidth = width;
 	header.biHeight = height;
@@ -83,16 +117,16 @@ void _putText(cv::Mat& img, const cv::String& text, const cv::Point& org, const 
 	header.biBitCount = 24;
 	BITMAPINFO bitmapInfo;
 	bitmapInfo.bmiHeader = header;
-	HBITMAP hbmp = ::CreateDIBSection(NULL, (LPBITMAPINFO)&bitmapInfo, DIB_RGB_COLORS, NULL, NULL, 0);
-	::SelectObject(hdc, hbmp);
+	HBITMAP hbmp = CreateDIBSection(NULL, (LPBITMAPINFO)&bitmapInfo, DIB_RGB_COLORS, NULL, NULL, 0);
+	SelectObject(hdc, hbmp);
 
 	//텍스트 배경 외의 색이 원래 검은색인데 채우는거임
 	FillRect(hdc, &rect, hBrush);
 
 	BITMAP  bitmap;
-	::GetObject(hbmp, sizeof(BITMAP), &bitmap);
+	GetObject(hbmp, sizeof(BITMAP), &bitmap);
 
-	HFONT hFont = ::CreateFontA(
+	HFONT hFont = CreateFontA(
 		fontSize,
 		0,
 		0,
@@ -107,15 +141,15 @@ void _putText(cv::Mat& img, const cv::String& text, const cv::Point& org, const 
 		(anti ? ANTIALIASED_QUALITY : DEFAULT_QUALITY), //안티를 허용하면 해주고 아니면 안해주고
 		VARIABLE_PITCH | FF_ROMAN,
 		fontname);
-	::SelectObject(hdc, hFont);
-	::SetTextColor(hdc, textcolor.rgb);
-	::SetBkColor(hdc, bkcolor.rgb);
+	SelectObject(hdc, hFont);
+	SetTextColor(hdc, textcolor.rgb);
+	SetBkColor(hdc, bkcolor.rgb);
 
 	//넓이 높이 구하기
 	SIZE size;
 	GetTextExtentPoint32A(hdc, text.c_str(), (int)text.length(), &size);
 
-	::TextOutA(hdc, 0, height / 3 * 1, text.c_str(), (int)text.length());
+	TextOutA(hdc, 0, height / 3 * 1, text.c_str(), (int)text.length());
 	int posX = (ori == 0 ? org.x : (ori == 1 ? org.x - (size.cx / 2) : org.x - size.cx)); //기준이 왼쪽이면 그대로, 중간이면 기준점 - 넓이 / 2, 오른쪽이면 기준점 - 넓이
 	int posY = org.y - (size.cy / 2 + 5);
 
@@ -141,9 +175,25 @@ void _putText(cv::Mat& img, const cv::String& text, const cv::Point& org, const 
 		}
 	}
 
-	::DeleteObject(hFont);
-	::DeleteObject(hbmp);
-	::DeleteDC(hdc);
+	DeleteObject(hFont);
+	DeleteObject(hbmp);
+	DeleteDC(hdc);
+}
+
+std::vector<std::filesystem::path> load_image_path(std::string folder) {
+	std::vector<std::filesystem::path> path;
+
+	for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(std::filesystem::current_path() / folder))
+		if (!entry.is_directory() && (entry.path().extension() == ".jpg" ||
+			entry.path().extension() == ".png" ||
+			entry.path().extension() == ".jpeg"))
+			path.push_back(entry.path());
+
+	return path;
+}
+
+std::string get_filename(std::filesystem::path& path) {
+	return path.filename().string().substr(0, path.filename().string().find('.'));
 }
 
 void setColor(short textColor = COLOR::DARK_WHITE, short background = COLOR::BLACK) {
@@ -158,9 +208,16 @@ void ErrorExit() {
 int main(int argv, char* args) {
     dlib::frontal_face_detector detector = dlib::get_frontal_face_detector();
     dlib::shape_predictor sp, fastsp;
+	anet_type net;
+
+	std::vector<dlib::matrix<float, 0, 1>> Celebface_descriptors;
 
 	std::string spPath = "Dlib_Model/shape_predictor_68_face_landmarks_GTX.dat";
 	std::string fastspPath = "Dlib_Model/shape_predictor_5_face_landmarks.dat";
+	std::string ResNetPath = "dlib_face_recognition_resnet_model_v1.dat";
+
+	std::vector<dlib::matrix<dlib::rgb_pixel>> celeb_faces;
+	std::vector<std::string> celeb_names;
 
 	//모델 로딩
 	//캠과 여러가지 요소들을 렌더링
@@ -193,9 +250,74 @@ int main(int argv, char* args) {
 				setColor();
 				ErrorExit();
 			}
+
+			if (_access(ResNetPath.c_str(), 0) != -1) {
+				setColor(COLOR::GREEN);
+				std::cout << ResNetPath << " 모델을 찾았습니다." << std::endl;
+				setColor();
+			}
+			else {
+				setColor(COLOR::RED);
+				std::cout << ResNetPath << " 모델을 찾지 못했습니다." << std::endl;
+				setColor();
+				ErrorExit();
+			}
 		}
 		dlib::deserialize(spPath) >> sp;
 		dlib::deserialize(fastspPath) >> fastsp;
+		dlib::deserialize(ResNetPath) >> net;
+	}
+	//이미지 로드 및 벡터화
+	{
+		if (Celebrity_Comparison) {
+			dlib::image_window showCelebImg;
+			std::vector<std::filesystem::path> celeb_path = load_image_path(CelebrityImagePath);
+
+			for (int celeb = 0; celeb < celeb_path.size(); celeb++) {
+				dlib::matrix<dlib::rgb_pixel> img;
+
+				load_image(img, celeb_path[celeb].string());
+
+				try {
+					if (detector(img).size() != 1)
+						throw detector(img).size();
+
+					setColor(COLOR::GREEN);
+					std::cout << celeb_path[celeb] << " 사진을 가져왔습니다.";
+					setColor(COLOR::WHITE);
+					std::cout << " 설정 된 유명인은 \"" << get_filename(celeb_path[celeb]) << "\" 입니다." << std::endl;
+
+					celeb_names.push_back(get_filename(celeb_path[celeb]));
+				}
+				catch (size_t num) {
+					setColor(COLOR::RED);
+					std::cout << celeb_path[celeb] << " 경로의 사진에서 " << detector(img).size() << "개의 얼굴이 발견 되었습니다. 1명만 있도록 맞춰주세요." << std::endl;
+					setColor(COLOR::DARK_WHITE);
+				}
+
+				auto celeb_face = detector(img);
+
+				dlib::matrix<dlib::rgb_pixel> face_chip;
+				extract_image_chip(img, get_face_chip_details(sp(img, celeb_face[0]), 150, 0.2), face_chip);
+
+				if (loadImageView) {
+					showCelebImg.set_image(face_chip);
+					Sleep(loadImageViewDelay);
+				}
+
+				celeb_faces.push_back(std::move(face_chip));
+			}
+			if (loadImageView)
+				showCelebImg.close_window();
+
+			setColor(COLOR::YELLOW);
+			std::cout << std::endl << "128개의 벡터 값으로 변환 중입니다." << std::endl;
+			face_descriptors = net(celeb_faces);
+			setColor(COLOR::GREEN);
+
+			std::cout << "완료" << std::endl << std::endl;
+			setColor();
+		}
 	}
 	
 	//캠과 여러가지 요소들을 렌더링 
@@ -321,7 +443,6 @@ int main(int argv, char* args) {
 					sprintf_s(CaptureCount, "");
 
 					start = clock();
-					//3초 세고 찰칵 찍게 하기 
 				}
 
 				if (iscapture) {
@@ -338,7 +459,36 @@ int main(int argv, char* args) {
 						cap.read(CaptureImg);
 						CaptureImg = CaptureImg(cv::Range(0, WEBCAMH), cv::Range(WEBCAMCUT, WEBCAMCUT + WEBCAMH));
 						cv::imshow("test2", CaptureImg);
-						cv::imwrite("./CaptureImage/capture.jpg", CaptureImg);
+
+						if (Calculate_Comparison) {
+							setColor(COLOR::YELLOW);
+							std::cout << "계산 중" << std::endl;
+
+							dlib::matrix<dlib::rgb_pixel> Myface;
+							
+							// ----------------------------------------
+							//CaptureImg
+							//std::vector<matrix<rgb_pixel>> Myfaces;
+
+							//웹캠 사진에서 얼굴 하나만 가져오면 됨
+							for (auto Myface : face_detector(Myimg)) {
+								auto shape = sp(Myimg, Myface);
+								matrix<rgb_pixel> Myface_chip;
+								extract_image_chip(Myimg, get_face_chip_details(shape, 150, 0.25), Myface_chip);
+								Myfaces.push_back(move(Myface_chip));
+							}
+
+							//이게 될진 모르겠지만 일단 해보는거
+							dlib::matrix<float, 0, 1> Myface_descriptor = net(Myface);
+
+							//비교한 데이터들 중 가장 거리가 짧은걸 이미지에 넣고 사진 만드는 곳으로 넘기기
+							for (int j = 0; j < faces.size(); j++) {
+								float distance = length(Myface_descriptor - Celebface_descriptors[j]);
+								if (distance <= ImageRange)
+									cout << distance << " " << celebrity[j] << endl;
+							}
+							//cv::imwrite("./CaptureImage/capture.jpg", CaptureImg);
+						}
 					}
 					if (iscapture && timer - start >= (clock_t)(1000 * captureReadyCount)) {
 						sprintf_s(CaptureCount, "%d", 3 - captureReadyCount);
