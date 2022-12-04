@@ -1,3 +1,5 @@
+//dlib::get_face_chip_details(sp(celeb_overlay, detector(celeb_overlay)[0]), OverlayImgSize, 0.25) 이거 OverlayImgSize 부분은 아무거나 넣으면 안됨 나오는 이미지가 입력한거 * 입력한거임
+
 #include "stdafx.h"
 
 #define CVUI_IMPLEMENTATION
@@ -10,6 +12,15 @@
 #define loadImageView true
 #define loadImageViewDelay 100
 #define Calculate_Comparison true
+
+#define MakeExportImage true
+#define CanvasWidth 1196
+#define CanvasHeight 803
+#define ImageStartY 147
+#define OverlayImgSize 220
+#define USE_OVERLAY true
+#define OverlayThickness 2
+#define OverlayColor dlib::rgb_pixel(255, 0, 0)
 
 #define SCREENW 1280
 #define SCREENH 720
@@ -51,6 +62,12 @@ using anet_type = dlib::loss_metric< dlib::fc_no_bias<128, dlib::avg_pool_everyt
 	dlib::max_pool<3, 3, 2, 2, dlib::relu<dlib::affine<dlib::con<32, 7, 7, 2, 2,
 	dlib::input_rgb_image_sized<150>
 	>>>>>>>>>>>>;
+
+struct FaceDistance
+{
+	int faceNum = 0;
+	float distance = 1;
+};
 
 enum COLOR {
     BLACK = 0,
@@ -197,7 +214,7 @@ std::string get_filename(std::filesystem::path& path) {
 }
 
 void setColor(short textColor = COLOR::DARK_WHITE, short background = COLOR::BLACK) {
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), textColor + background * 16);
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), textColor + background * 16);
 }
 
 void ErrorExit() {
@@ -206,18 +223,37 @@ void ErrorExit() {
 }
 
 int main(int argv, char* args) {
-    dlib::frontal_face_detector detector = dlib::get_frontal_face_detector();
-    dlib::shape_predictor sp, fastsp;
+	dlib::frontal_face_detector detector = dlib::get_frontal_face_detector();
+	dlib::shape_predictor sp, fastsp;
 	anet_type net;
 
 	std::vector<dlib::matrix<float, 0, 1>> Celebface_descriptors;
 
 	std::string spPath = "Dlib_Model/shape_predictor_68_face_landmarks_GTX.dat";
 	std::string fastspPath = "Dlib_Model/shape_predictor_5_face_landmarks.dat";
-	std::string ResNetPath = "dlib_face_recognition_resnet_model_v1.dat";
+	std::string ResNetPath = "Dlib_Model/dlib_face_recognition_resnet_model_v1.dat";
 
 	std::vector<dlib::matrix<dlib::rgb_pixel>> celeb_faces;
+
+	std::vector<dlib::matrix<dlib::rgb_pixel>> celeb_faces_chip;
 	std::vector<std::string> celeb_names;
+
+	dlib::matrix<dlib::bgr_pixel> logo; //나중에 이미지 출력할 때 세명컴고 로고임
+	std::string logoPath = "logo/logo.jpg";
+	if (MakeExportImage) {
+		if (_access(spPath.c_str(), 0) != -1) {
+			dlib::load_image(logo, logoPath);
+			setColor(COLOR::GREEN);
+			std::cout << logoPath << " 사진을 찾았습니다." << std::endl;
+			setColor();
+		}
+		else {
+			setColor(COLOR::RED);
+			std::cout << logoPath << " 사진을 찾지 못했습니다." << std::endl;
+			setColor();
+			ErrorExit();
+		}
+	}
 
 	//모델 로딩
 	//캠과 여러가지 요소들을 렌더링
@@ -273,11 +309,12 @@ int main(int argv, char* args) {
 			dlib::image_window showCelebImg;
 			std::vector<std::filesystem::path> celeb_path = load_image_path(CelebrityImagePath);
 
+			int celebCount = 0;
+
 			for (int celeb = 0; celeb < celeb_path.size(); celeb++) {
 				dlib::matrix<dlib::rgb_pixel> img;
 
 				load_image(img, celeb_path[celeb].string());
-
 				try {
 					if (detector(img).size() != 1)
 						throw detector(img).size();
@@ -287,32 +324,39 @@ int main(int argv, char* args) {
 					setColor(COLOR::WHITE);
 					std::cout << " 설정 된 유명인은 \"" << get_filename(celeb_path[celeb]) << "\" 입니다." << std::endl;
 
+					auto celeb_face = detector(img);
+
+					dlib::matrix<dlib::rgb_pixel> face_chip;
+					dlib::extract_image_chip(img, dlib::get_face_chip_details(sp(img, celeb_face[0]), 150, 0.25), face_chip);
+
+					if (loadImageView) {
+						showCelebImg.set_image(face_chip);
+						Sleep(loadImageViewDelay);
+					}
+
+					if (MakeExportImage) //나중에 이미지 만들어서 저장할 때 쓸려고
+						celeb_faces.push_back(img);
+					celeb_faces_chip.push_back(std::move(face_chip));
 					celeb_names.push_back(get_filename(celeb_path[celeb]));
+
+					celebCount++;
 				}
 				catch (size_t num) {
 					setColor(COLOR::RED);
 					std::cout << celeb_path[celeb] << " 경로의 사진에서 " << detector(img).size() << "개의 얼굴이 발견 되었습니다. 1명만 있도록 맞춰주세요." << std::endl;
 					setColor(COLOR::DARK_WHITE);
 				}
-
-				auto celeb_face = detector(img);
-
-				dlib::matrix<dlib::rgb_pixel> face_chip;
-				extract_image_chip(img, get_face_chip_details(sp(img, celeb_face[0]), 150, 0.2), face_chip);
-
-				if (loadImageView) {
-					showCelebImg.set_image(face_chip);
-					Sleep(loadImageViewDelay);
-				}
-
-				celeb_faces.push_back(std::move(face_chip));
 			}
+			setColor(COLOR::AQUA);
+			std::cout << celebCount << "명의 이미지를 가져왔습니다." << std::endl;
+			setColor();
+
 			if (loadImageView)
 				showCelebImg.close_window();
 
 			setColor(COLOR::YELLOW);
 			std::cout << std::endl << "128개의 벡터 값으로 변환 중입니다." << std::endl;
-			face_descriptors = net(celeb_faces);
+			Celebface_descriptors = net(celeb_faces_chip);
 			setColor(COLOR::GREEN);
 
 			std::cout << "완료" << std::endl << std::endl;
@@ -358,6 +402,8 @@ int main(int argv, char* args) {
 		int captureReadyCount = 0;
 
 		char CaptureCount[5] = "";
+
+		bool usecapture = false;
 
 		cv::Mat CaptureImg(WEBCAMH, WEBCAMW, CV_8UC3); //정사각형 캡쳐하면 이 곳으로 넘길꺼
 		cv::Mat camImg(WEBCAMH, WEBCAMW, CV_8UC3); //일단 여기에서 16:9로 맞추고 나중에 정사각형으로 바꿀꺼임
@@ -411,12 +457,17 @@ int main(int argv, char* args) {
 						setColor(12);
 						std::cout << "얼굴이 여러개 있네요." << std::endl;
 						setColor();
+						usecapture = false;
 						goto webcamEnd;
 					}
-					else if (face.size() == 0)
+					else if (face.size() == 0) {
+						usecapture = false;
 						goto webcamEnd;
+					}
+						
+					usecapture = true;
 
-					auto faceRect = dlib::get_face_chip_details(fastsp(cimg, face[0]), 1, 0.2).rect;
+					auto faceRect = dlib::get_face_chip_details(fastsp(cimg, face[0]), WEBCAMH, 0.2).rect;
 
 					cv::rectangle(camImg, cv::Rect(faceRect.left(), faceRect.top(), faceRect.width(), faceRect.height()), cv::Scalar(0, 0, 255), 1, 4, 0);
 				}
@@ -458,36 +509,108 @@ int main(int argv, char* args) {
 						//캡쳐한 후 captureImg로 넘기고 따른 곳으로 잠시 넘겨서 계산한 뒤에 다시 움직이게 할 예정
 						cap.read(CaptureImg);
 						CaptureImg = CaptureImg(cv::Range(0, WEBCAMH), cv::Range(WEBCAMCUT, WEBCAMCUT + WEBCAMH));
-						cv::imshow("test2", CaptureImg);
+						//cv::imshow("test2", CaptureImg);
 
 						if (Calculate_Comparison) {
-							setColor(COLOR::YELLOW);
-							std::cout << "계산 중" << std::endl;
+							if (usecapture) {
+								setColor(COLOR::YELLOW);
+								std::cout << "계산 중" << std::endl;
 
-							dlib::matrix<dlib::rgb_pixel> Myface;
-							
-							// ----------------------------------------
-							//CaptureImg
-							//std::vector<matrix<rgb_pixel>> Myfaces;
+								dlib::cv_image<dlib::bgr_pixel> Myface(CaptureImg);
 
-							//웹캠 사진에서 얼굴 하나만 가져오면 됨
-							for (auto Myface : face_detector(Myimg)) {
-								auto shape = sp(Myimg, Myface);
-								matrix<rgb_pixel> Myface_chip;
-								extract_image_chip(Myimg, get_face_chip_details(shape, 150, 0.25), Myface_chip);
-								Myfaces.push_back(move(Myface_chip));
+								auto my_face = detector(Myface);
+
+								dlib::matrix<dlib::rgb_pixel> face_chip;
+								extract_image_chip(Myface, dlib::get_face_chip_details(sp(Myface, my_face[0]), 150, 0.25), face_chip); //150은 비교하는거라 dlib에서 기본으로 추천하는게 저거임
+
+								dlib::matrix<float, 0, 1> Myface_descriptor = net(face_chip);
+
+								FaceDistance faceDistance, faceLowDistance;
+								setColor(COLOR::AQUA);
+								for (int j = 0; j < Celebface_descriptors.size(); j++) {
+									faceDistance = { j, dlib::length(Myface_descriptor - Celebface_descriptors[j]) };
+									//float distance = dlib::length(Myface_descriptor - Celebface_descriptors[j]);
+									if (faceDistance.distance < faceLowDistance.distance) {
+										faceLowDistance = { faceDistance.faceNum, faceDistance.distance };
+										std::cout << faceDistance.distance << " " << celeb_names[faceDistance.faceNum] << std::endl;
+									}
+								}
+								setColor(COLOR::GREEN);
+								std::cout << "가장 닮은 얼굴은 " << celeb_names[faceLowDistance.faceNum] << ", 거리 : " << faceLowDistance.distance << std::endl;
+								setColor();
+								//테스트로 저장하는거임
+								dlib::save_jpeg(face_chip, "face_chip.jpg");
+								dlib::save_jpeg(Myface, "My_Face.jpg");
+
+								//이미지 이쁘게 만들어서 출력하는 것
+								if (MakeExportImage) {
+									cv::Mat outImg(CanvasHeight, CanvasWidth, CV_8UC3, cv::Scalar(255, 255, 255)); //Scalar는 채우기임
+
+									dlib::matrix<dlib::bgr_pixel> celeb_face_chip, my_face_chip;
+									extract_image_chip(celeb_faces[faceLowDistance.faceNum], dlib::get_face_chip_details(sp(celeb_faces[faceLowDistance.faceNum], detector(celeb_faces[faceLowDistance.faceNum])[0]), 150, 0.6).rect, celeb_face_chip); //get_face_chip_details 는 얼굴 위치, 가로세로 사이즈(정사각형), 어느정도 나올지 숫자가 높아질 수록 많이 포함됨 rect로 하는건 회전 값을 안주기 위해
+									extract_image_chip(Myface, dlib::get_face_chip_details(sp(Myface, detector(Myface)[0]), 150, 0.6).rect, my_face_chip);
+									//사이즈 부분은 전체 이미지에서 얼굴 부분이 CanvasWidth / 2 보다 크면 잘릴 수 있음
+									//발생 이유 이미지에서 어느정도 거리를 주며 자르게 되는데 그 거리가 사진을 넘어버리면 넘어버린 상태로 자르기 때문에 이래 되는거임
+
+									cv::Mat cv_celeb_face_chip = dlib::toMat(celeb_face_chip);
+									cv::Mat cv_my_face_chip = dlib::toMat(my_face_chip);
+									cv::Mat cv_logo = dlib::toMat(logo);
+
+									cv::resize(cv_celeb_face_chip, cv_celeb_face_chip, cv::Size(CanvasWidth / 2, CanvasWidth / 2));
+									cv::resize(cv_my_face_chip, cv_my_face_chip, cv::Size(CanvasWidth / 2, CanvasWidth / 2));
+									cv::resize(cv_logo, cv_logo, cv::Size(535, 147));
+
+									putImage(cv_logo, outImg, cv::Rect(0, 0, 535, 147));
+
+									putImage(cv_my_face_chip, outImg, cv::Rect(0, ImageStartY, CanvasWidth / 2, CanvasWidth / 2)); //Rect에서 왼쪽 위하고 크기 지정임 Rect(x1, y1, width, height)
+									putImage(cv_celeb_face_chip, outImg, cv::Rect(CanvasWidth / 2, ImageStartY, CanvasWidth / 2, CanvasWidth / 2));
+
+									if (USE_OVERLAY) {
+										dlib::matrix<dlib::bgr_pixel> celeb_overlay = celeb_face_chip, my_overlay = my_face_chip;
+										dlib::matrix<dlib::bgr_pixel> celeb_overlay_resize(OverlayImgSize, OverlayImgSize), my_overlay_resize(OverlayImgSize, OverlayImgSize);
+
+										dlib::resize_image(celeb_overlay, celeb_overlay_resize);
+										dlib::resize_image(my_overlay, my_overlay_resize);
+
+										dlib::draw_rectangle(celeb_overlay_resize, dlib::get_face_chip_details(sp(celeb_overlay_resize, detector(celeb_overlay_resize)[0]), 150, 0.25).rect, OverlayColor, OverlayThickness);
+										dlib::draw_rectangle(my_overlay_resize, dlib::get_face_chip_details(sp(my_overlay_resize, detector(my_overlay_resize)[0]), 150, 0.25).rect, OverlayColor, OverlayThickness);
+
+										cv::Mat cv_celeb_overlay_resize = dlib::toMat(celeb_overlay_resize);
+										cv::Mat cv_my_overlay_resize = dlib::toMat(my_overlay_resize);
+
+										putImage(cv_my_overlay_resize, outImg, cv::Rect(0, 525, OverlayImgSize, OverlayImgSize));
+										putImage(cv_celeb_overlay_resize, outImg, cv::Rect(CanvasWidth - OverlayImgSize, 525, OverlayImgSize, OverlayImgSize));
+
+										cv::rectangle(outImg, cv::Rect(0, 525, OverlayImgSize, OverlayImgSize), cv::Scalar(0, 0, 0), 3, 4, 0);
+										cv::rectangle(outImg, cv::Rect(CanvasWidth - OverlayImgSize, 525, OverlayImgSize, OverlayImgSize), cv::Scalar(0, 0, 0), 3, 4, 0);
+									}
+
+									cv::rectangle(outImg, cv::Rect(0, ImageStartY, CanvasWidth / 2, CanvasWidth / 2), cv::Scalar(0, 0, 0), 3, 4, 0); //cv::copyMakeBorder 이건 밖 만 테두리 채워져서 사진 이미지 크기가 달라져서 안됨
+									cv::rectangle(outImg, cv::Rect(CanvasWidth / 2, ImageStartY, CanvasWidth / 2, CanvasWidth / 2), cv::Scalar(0, 0, 0), 3, 4, 0); //3은 두께임
+
+									//여기 아래 텍스트 바꾸는거 하셈
+									//한글 텍스트
+									char celebCompare[20];
+									sprintf_s(celebCompare, "%.1f%%", (1 - faceLowDistance.distance) * 100);
+									_putText(outImg, celebCompare, cvPoint(CanvasWidth, 95), 2, "맑은 고딕", FW_BOLD, 6, true, RGBScale(0, 0, 0), RGBScale(255, 255, 255)); //한글로 되게 바꿔야함 (완료)
+									_putText(outImg, "2022-11-08 오후 03:16:32", cvPoint(CanvasWidth, 0), 2, "맑은 고딕", FW_DEMIBOLD, 4, true, RGBScale(255, 0, 0), RGBScale(255, 255, 255));
+
+									_putText(outImg, "나", cvPoint(CanvasWidth / 4, 745), 1, "맑은 고딕", FW_BOLD, 6, true, RGBScale(0, 0, 0), RGBScale(255, 255, 255)); //CanvasWidth / 4 첫번째 사진의 중간
+									_putText(outImg, celeb_names[faceLowDistance.faceNum], cvPoint(CanvasWidth / 4 * 3, 745), 1, "맑은 고딕", FW_BOLD, 6, true, RGBScale(0, 0, 0), RGBScale(255, 255, 255)); //CanvasWidth / 4 * 3 는 2번째 사진의 중간을 가르키기 위해
+
+									//cv::imshow("oImg", outImg);
+
+									//cv::waitKey(); //이거 안하면 렉걸림 키 기다리는 듯
+									//cv::destroyAllWindows(); //이미지 띄운거 끄는건가봄
+
+									cv::imwrite("01.jpg", outImg);
+								}
 							}
-
-							//이게 될진 모르겠지만 일단 해보는거
-							dlib::matrix<float, 0, 1> Myface_descriptor = net(Myface);
-
-							//비교한 데이터들 중 가장 거리가 짧은걸 이미지에 넣고 사진 만드는 곳으로 넘기기
-							for (int j = 0; j < faces.size(); j++) {
-								float distance = length(Myface_descriptor - Celebface_descriptors[j]);
-								if (distance <= ImageRange)
-									cout << distance << " " << celebrity[j] << endl;
+							else {
+								setColor(COLOR::RED);
+								std::cout << "얼굴이 감지되지 않았습니다." << std::endl;
+								setColor();
 							}
-							//cv::imwrite("./CaptureImage/capture.jpg", CaptureImg);
 						}
 					}
 					if (iscapture && timer - start >= (clock_t)(1000 * captureReadyCount)) {
