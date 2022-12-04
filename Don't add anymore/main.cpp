@@ -10,7 +10,7 @@
 #define Celebrity_Comparison true
 #define CelebrityImagePath "celebrity"
 #define loadImageView true
-#define loadImageViewDelay 100
+#define loadImageViewDelay 0
 #define Calculate_Comparison true
 
 #define MakeExportImage true
@@ -33,7 +33,7 @@
 
 #define WEBCAMCUT (WEBCAMW - WEBCAMH) / 2
 
-#define camNum 1
+//#define camNum 1
 
 template <template <int, template<typename>class, int, typename> class block, int n, template<typename>class bn, typename subnet>
 using residual = dlib::add_prev1<block<n, bn, 1, dlib::tag1<subnet>>>;
@@ -222,7 +222,15 @@ void ErrorExit() {
     exit(1);
 }
 
-int main(int argv, char* args) {
+int main(int argv, char* args[]) {
+	//카메라 선택하는거
+	int camNum = 1;
+	if (argv == 2)
+		camNum = atoi(args[1]);
+	setColor(COLOR::AQUA);
+	std::cout << "설정 된 캠은 " << camNum << "입니다." << std::endl;
+	setColor();
+
 	dlib::frontal_face_detector detector = dlib::get_frontal_face_detector();
 	dlib::shape_predictor sp, fastsp;
 	anet_type net;
@@ -419,7 +427,7 @@ int main(int argv, char* args) {
 		//float timeElapsed = 0.0f;
 
 		while (true) {
-			std::cout << "check" << std::endl;
+			//std::cout << "check" << std::endl;
 
 			{ //fps 계산
 				//frameCnt++;
