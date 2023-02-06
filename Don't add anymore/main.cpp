@@ -7,11 +7,11 @@
 
 #define WINDOW_NAME	"Face Recognition (연예인 닮음 찾기)"
 
-#define Celebrity_Comparison true
+#define Celebrity_Comparison false
 #define CelebrityImagePath "celebrity"
 #define loadImageView true
 #define loadImageViewDelay 0
-#define Calculate_Comparison true
+#define Calculate_Comparison false
 
 #define MakeExportImage true
 #define CanvasWidth 1196
@@ -34,7 +34,6 @@
 #define WEBCAMCUT (WEBCAMW - WEBCAMH) / 2
 
 //#define camNum 1
-
 template <template <int, template<typename>class, int, typename> class block, int n, template<typename>class bn, typename subnet>
 using residual = dlib::add_prev1<block<n, bn, 1, dlib::tag1<subnet>>>;
 
@@ -70,22 +69,22 @@ struct FaceDistance
 };
 
 enum COLOR {
-    BLACK = 0,
-    DARK_BLUE = 1,
-    DARK_GREEN = 2,
-    DARK_AQUA = 3,
-    DARK_RED = 4,
-    DARK_PURPLE = 5,
-    DARK_YELLOW = 6,
-    DARK_WHITE = 7,
-    GRAY = 8,
-    BLUE = 9,
-    GREEN = 10,
-    AQUA = 11,
-    RED = 12,
-    PURPLE = 13,
-    YELLOW = 14,
-    WHITE = 15
+	BLACK = 0,
+	DARK_BLUE = 1,
+	DARK_GREEN = 2,
+	DARK_AQUA = 3,
+	DARK_RED = 4,
+	DARK_PURPLE = 5,
+	DARK_YELLOW = 6,
+	DARK_WHITE = 7,
+	GRAY = 8,
+	BLUE = 9,
+	GREEN = 10,
+	AQUA = 11,
+	RED = 12,
+	PURPLE = 13,
+	YELLOW = 14,
+	WHITE = 15
 };
 
 struct RGBScale {
@@ -218,13 +217,13 @@ void setColor(short textColor = COLOR::DARK_WHITE, short background = COLOR::BLA
 }
 
 void ErrorExit() {
-    system("pause");
-    exit(1);
+	system("pause");
+	exit(1);
 }
 
 int main(int argv, char* args[]) {
 	//카메라 선택하는거
-	int camNum = 1;
+	int camNum = 0;
 	if (argv == 2)
 		camNum = atoi(args[1]);
 	setColor(COLOR::AQUA);
@@ -371,7 +370,7 @@ int main(int argv, char* args[]) {
 			setColor();
 		}
 	}
-	
+
 	//캠과 여러가지 요소들을 렌더링 
 	{
 		//opencv 윈도우 이름 정하는거
@@ -399,6 +398,11 @@ int main(int argv, char* args[]) {
 		//cv::Mat Test;
 		//cap.read(Test);
 		//cv::imshow("test", Test);
+
+		//시간 측정
+		std::chrono::system_clock::time_point start_time;
+		std::chrono::system_clock::time_point end_time;
+		std::chrono::milliseconds mill;
 
 		int LRMargin = 20;
 		int Margin = 30;
@@ -434,6 +438,16 @@ int main(int argv, char* args[]) {
 				//if((mTimer))
 			}
 
+			{ //시간 측정 2번째 부터 가능
+				end_time = std::chrono::system_clock::now();
+				
+				mill = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+
+				std::cout << mill.count() << std::endl;
+
+				start_time = std::chrono::system_clock::now();
+			}
+
 			//프레임 렌더링
 			{
 				//cols가 가로 , rows가 세로
@@ -450,7 +464,7 @@ int main(int argv, char* args[]) {
 						std::cout << "웹캠에서 이미지를 읽을 수 없습니다." << std::endl;
 						goto webcamEnd; //매트릭스로 읽을 수 없으면 건너뛰기
 					}
-					
+
 					//여기서 미리 바꾸는 이유는 화면에서 표시되지 않는 부분도 감지하기 때문
 					camImg = camImg(cv::Range(0, WEBCAMH), cv::Range(WEBCAMCUT, WEBCAMCUT + WEBCAMH));
 
@@ -472,7 +486,7 @@ int main(int argv, char* args[]) {
 						usecapture = false;
 						goto webcamEnd;
 					}
-						
+
 					usecapture = true;
 
 					auto faceRect = dlib::get_face_chip_details(fastsp(cimg, face[0]), WEBCAMH, 0.2).rect;
@@ -480,8 +494,8 @@ int main(int argv, char* args[]) {
 					cv::rectangle(camImg, cv::Rect(faceRect.left(), faceRect.top(), faceRect.width(), faceRect.height()), cv::Scalar(0, 0, 255), 1, 4, 0);
 				}
 
-				webcamEnd:
-				
+			webcamEnd:
+
 				if (true) { //카메라를 읽어야 할때
 					cv::resize(camImg, camImg, cv::Size(frame.rows, frame.rows));
 					//cv::imshow("test", camImg);
@@ -506,7 +520,7 @@ int main(int argv, char* args[]) {
 
 				if (iscapture) {
 					timer = clock();
-					
+
 					if (timer - start >= (clock_t)3000) {
 						iscapture = false;
 
@@ -646,9 +660,9 @@ int main(int argv, char* args[]) {
 			}
 		}
 	}
-	
 
-	
-    //캠 세팅
-    
+
+
+	//캠 세팅
+
 }
