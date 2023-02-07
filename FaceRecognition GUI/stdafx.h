@@ -6,6 +6,10 @@
 #include <dlib/image_io.h>
 #include <dlib/image_processing/frontal_face_detector.h>
 
+#include <dlib/opencv.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
 #include <string>
 #include <filesystem>
 #include <io.h>

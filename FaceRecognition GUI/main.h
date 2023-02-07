@@ -7,11 +7,25 @@
 //개발 상황에 따라 필요없는건 꺼야 할 수도 있는 것들
 #define CheckCam false //카메라의 유무를 확인 등 카메라 관련 세팅을 보거나 설정할지
 #define UseModelLoad true //모델을 가져올지 안가져올지
+#define PreSetImage true //미리 GUI를 세팅하는 것
 #define TransCelebVector true //이미지를 벡터로 바꿀지 안바꿀지 "이거 할 땐 Debug로 안됨 Release로 해야함"
+#define UseOpenCVGUI false //GUI 관련, 제일 메인이 될 것
 
 #define LoadImageView true //적용될 이미지를 미리 확인해주게 할지 말지 정하는거
 #define LoadImageViewDelay 100 //이미지를 보여줄 때 너무 빨리 넘어가면 안되니깐 속도를 약간 늦춰주는거
 #define MakeExportImage true //나중에 이미지를 따로 저장해서 쓸 수 있게 할지 말지
+
+#define TempCamNum 1 //아직 카메라 선택이 가능하지 않기 때문에 임시로
+
+//크기를 반응형으로 바꾸기 어렵기 때문에 16:9 비율로 제작 예정
+#define GUIWidth 1920/2
+#define GUIHeight 1080/2
+#define CamWidth GUIHeight
+#define CamHeight CamWidth
+
+#define OriLeft 0 
+#define OriCenter 1
+#define OriRight 2
 
 //-----모델을 사용하기 위한 필수 명령어 들-----
 template <template <int, template<typename>class, int, typename> class block, int n, template<typename>class bn, typename subnet>
@@ -68,6 +82,64 @@ enum COLOR {
     YELLOW = 14,
     WHITE = 15
 };
+
+struct RGBScale {
+    int r = 0;
+    int g = 0;
+    int b = 0;
+    int rgb = 0;
+
+    RGBScale(int r, int g, int b) {
+        this->r = r;
+        this->g = g;
+        this->b = b;
+
+        this->rgb = RGB(r, g, b);
+    }
+};
+
+//OpenCV 이미지를 OpenCV이미지의 특정 위치에다가 삽입하는 거
+void CPputImage(cv::Mat& I_image, cv::Mat& O_image, cv::Rect pos);
+/// <summary>
+/// OpenCV에선 영어만 텍스트를 만들어서 적용이 가능하기 때문에 한글을 위해 윈도우의 다른 곳에서 미리 비트맵으로 이미지를 만들고 OpenCV로 적용하는 방식
+/// </summary>
+/// <param name="O_image">적용할 이미지</param>
+/// <param name="text">텍스트</param>
+/// <param name="org">텍스트 위치</param>
+/// <param name="ori">텍스트를 어떤 기준 위치로 둘지 OriLeft, OriCenter, OriRight</param>
+/// <param name="fontName">폰트 이름</param>
+/// <param name="fontWeight">폰트 두께</param>
+/// <param name="fontScale">폰트 크기</param>
+/// <param name="textColor">텍스트 색</param>
+/// <param name="bkColor">텍스트 배경 색</param>
+void CPputText(cv::Mat& O_image, cv::String text, cv::Point org, int ori, const char* fontName, int fontWeight, double fontScale, RGBScale textColor, RGBScale bkColor);
+
+//GUI의 여러가지 UI를 컨트롤 할 수 있는 함수 모음
+namespace GUICon {
+    //메인 웹캠쪽에 이미지 넣는거
+    void putWebcamView(cv::Mat& I_image, cv::Mat& O_image) {
+        CPputImage(I_image, O_image, cv::Rect(0, 0, CamWidth, CamHeight));
+    }
+    void putWebcamView(dlib::matrix<dlib::rgb_pixel> I_image, cv::Mat& O_image) {
+        cv::Mat image = dlib::toMat(I_image);
+        cv::cvtColor(image, image, cv::COLOR_RGB2BGR);
+
+        CPputImage(image, O_image, cv::Rect(0, 0, CamWidth, CamHeight));
+    }
+    //프리뷰 쪽에 이미지 넣는거
+    void putPreImageView(cv::Mat& I_image, cv::Mat& O_image) {
+        CPputImage(I_image, O_image, cv::Rect(GUIHeight + 20, 180 + 20, ((GUIWidth - GUIHeight) / 2) - 40, ((GUIWidth - GUIHeight) / 2) - 40));
+    }
+    void putPreImageView(dlib::matrix<dlib::rgb_pixel> I_image, cv::Mat& O_image) {
+        cv::Mat image = dlib::toMat(I_image);
+        cv::cvtColor(image, image, cv::COLOR_RGB2BGR);
+
+        CPputImage(image, O_image, cv::Rect(GUIHeight + 20, 180 + 20, ((GUIWidth - GUIHeight) / 2) - 40, ((GUIWidth - GUIHeight) / 2) - 40));
+    }
+}
+
+//GUI에서 고정 이미지를 만들고 나중에 필요할 때 마다 새로 삽입하는 방식으로 하기 위해
+void GUIInitImage(cv::Mat& O_image);
 
 //모델의 유무 판단
 bool modelisAlive(std::string& path);
