@@ -166,7 +166,7 @@ int main(int argv, char* args[]) {
 			dlib::matrix<dlib::rgb_pixel> I_celeb_img;
 
 			dlib::load_image(I_celeb_img, celeb_path.string());
-
+			
 			if (detector(I_celeb_img).size() == 1) { //사진에서 얼굴이 1개 감지되면
 				setColor(COLOR::GREEN);
 				std::cout << celeb_path << " 사진을 가져왔습니다.";
@@ -180,9 +180,37 @@ int main(int argv, char* args[]) {
 
 				if (LoadImageView) {
 					//PI_showCelebImg.set_image(I_face_chip);
+					if (ShowMainView) {
+						//이미지와 같은 크기의 정사각형 배경을 만들고 색은 그 이미지의 평균색
+						//그리고 그 배경을 웹캠 뷰에 맞게 리사이즈 시켜서 넣는다(그냥 함수로 바로 넣으면 됨)
+						//만약 정사각형이면 이 과정을 패스
+
+						if (I_celeb_img.nc() == I_celeb_img.nr())
+							GUICon::putWebcamView(I_celeb_img, preSetImage);
+						else {
+							//이미지의 길이에 맞춰 배경 생성하고 색 넣기
+							int squareLen = (I_celeb_img.nc() < I_celeb_img.nr() ? I_celeb_img.nr() : I_celeb_img.nc());
+							
+							cv::Mat originalViewImage(squareLen, squareLen, CV_8UC3);
+							originalViewImage = cv::Scalar(0xFF, 0xFF, 0xFF);
+
+							//배경 이미지 중앙에 사진 넣기
+							//사진의 세로가 가로보다 짧을 경우 squareLen의 길이에서 반을 나누고 이미지 세로의 반 만큼 빼서 좌표 구하기						
+							if (I_celeb_img.nr() < I_celeb_img.nc()) { //가로가 더 클 경우 같을 경우 비교 안하는건 위에서 이미 해서
+								int ypos = (squareLen / 2) - (I_celeb_img.nr() / 2); //세로가 짧을 경우 정사각형의 한 변의 길에서 이미지 세로 반을 빼서 위치 구하는 것
+								CPputImage(I_celeb_img, originalViewImage, cv::Rect(0, ypos, I_celeb_img.nc(), I_celeb_img.nr()));
+							}
+							else {
+								int xpos = (squareLen / 2) - (I_celeb_img.nc() / 2); //위와 반대
+								CPputImage(I_celeb_img, originalViewImage, cv::Rect(xpos, 0, I_celeb_img.nc(), I_celeb_img.nr()));
+							}
+							cv::cvtColor(originalViewImage, originalViewImage, cv::COLOR_RGB2BGR);
+							GUICon::putWebcamView(originalViewImage, preSetImage);
+						}
+					}
 					GUICon::putPreImageView(I_face_chip, preSetImage);
 					cv::imshow("Test", preSetImage);
-					cv::waitKey(20);
+					cv::waitKey();
 					Sleep(LoadImageViewDelay);
 				}
 
@@ -222,10 +250,6 @@ int main(int argv, char* args[]) {
 
 		//웹캠의 가로 세로도 다르기 때문에 잘라주는 것도 해야함
 		
-
-		
-		
-		
 	}
 
 	system("pause");
@@ -236,6 +260,15 @@ void CPputImage(cv::Mat& I_image, cv::Mat& O_image, cv::Rect pos) {
 
 	cv::Mat imageROI(O_image, pos);
 	I_image.copyTo(imageROI);
+}
+
+void CPputImage(dlib::matrix<dlib::rgb_pixel> I_image, cv::Mat& O_image, cv::Rect pos) {
+	cv::Mat image = dlib::toMat(I_image);
+	
+	cv::resize(image, image, cv::Size(pos.width, pos.height));
+
+	cv::Mat imageROI(O_image, pos);
+	image.copyTo(imageROI);
 }
 
 void CPputText(cv::Mat& O_image, cv::String text, cv::Point org, int ori, const char* fontName, int fontWeight, double fontScale, RGBScale textColor, RGBScale bkColor) {

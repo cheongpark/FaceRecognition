@@ -13,6 +13,7 @@
 
 #define LoadImageView true //적용될 이미지를 미리 확인해주게 할지 말지 정하는거
 #define LoadImageViewDelay 100 //이미지를 보여줄 때 너무 빨리 넘어가면 안되니깐 속도를 약간 늦춰주는거
+#define ShowMainView LoadImageView //메인 웹캠 뷰 쪽에 원본 이미지를 보여줄지
 #define MakeExportImage true //나중에 이미지를 따로 저장해서 쓸 수 있게 할지 말지
 
 #define TempCamNum 1 //아직 카메라 선택이 가능하지 않기 때문에 임시로
@@ -100,6 +101,7 @@ struct RGBScale {
 
 //OpenCV 이미지를 OpenCV이미지의 특정 위치에다가 삽입하는 거
 void CPputImage(cv::Mat& I_image, cv::Mat& O_image, cv::Rect pos);
+void CPputImage(dlib::matrix<dlib::rgb_pixel> I_image, cv::Mat& O_image, cv::Rect pos);
 /// <summary>
 /// OpenCV에선 영어만 텍스트를 만들어서 적용이 가능하기 때문에 한글을 위해 윈도우의 다른 곳에서 미리 비트맵으로 이미지를 만들고 OpenCV로 적용하는 방식
 /// </summary>
