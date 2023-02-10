@@ -6,10 +6,12 @@
 
 //개발 상황에 따라 필요없는건 꺼야 할 수도 있는 것들
 #define CheckCam false //카메라의 유무를 확인 등 카메라 관련 세팅을 보거나 설정할지
-#define UseModelLoad true //모델을 가져올지 안가져올지
+#define UseModelLoad false //모델을 가져올지 안가져올지
 #define PreSetImage true //미리 GUI를 세팅하는 것
-#define TransCelebVector true //이미지를 벡터로 바꿀지 안바꿀지 "이거 할 땐 Debug로 안됨 Release로 해야함"
-#define UseOpenCVGUI false //GUI 관련, 제일 메인이 될 것
+#define TransCelebVector false //이미지를 벡터로 바꿀지 안바꿀지 "이거 할 땐 Debug로 안됨 Release로 해야함"
+#define UseOpenCVGUI true //GUI 관련, 제일 메인이 될 것
+
+//#define ButtonTest true //버튼 테스트좀 해볼려는거
 
 #define LoadImageView true //적용될 이미지를 미리 확인해주게 할지 말지 정하는거
 #define LoadImageViewDelay 100 //이미지를 보여줄 때 너무 빨리 넘어가면 안되니깐 속도를 약간 늦춰주는거
@@ -118,6 +120,15 @@ void CPputText(cv::Mat& O_image, cv::String text, cv::Point org, int ori, const 
 
 //GUI의 여러가지 UI를 컨트롤 할 수 있는 함수 모음
 namespace GUICon {
+    cv::Rect BR_capture;
+    cv::Rect BR_preview;
+    cv::Rect BR_export;
+    cv::Rect BR_landMark;
+
+    //버튼
+    void buttonsCheck(int event, int x, int y, int flags, void* userData);
+
+    //이미지 출력
     //메인 웹캠쪽에 이미지 넣는거
     void putWebcamView(cv::Mat& I_image, cv::Mat& O_image) {
         CPputImage(I_image, O_image, cv::Rect(0, 0, CamWidth, CamHeight));

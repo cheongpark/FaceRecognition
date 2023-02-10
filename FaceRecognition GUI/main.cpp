@@ -4,7 +4,6 @@
 #include <iostream>
 #include <Windows.h>
 
-
 int main(int argv, char* args[]) {
 	//std::cout << argv << std::endl << args[0] << std::endl << args[1]; //파라미터 테스트
 
@@ -21,6 +20,8 @@ int main(int argv, char* args[]) {
 	cv::Mat frame(GUIHeight, GUIWidth, CV_8UC3); //미리 정한 가로 세로 대로 frame 만드는거
 	cv::Mat preSetImage(GUIHeight, GUIWidth, CV_8UC3); //고정 GUI를 저장하는 곳
 
+	bool useFaceLandMark = true; //메인 웹캠뷰 쪽에서 얼굴을 인식해서 빨간 상자를 띄어주는걸 할지 말지
+
 	/*
 		cols 가로
 		rows 세로
@@ -34,6 +35,7 @@ int main(int argv, char* args[]) {
 		프리뷰 비디오 : PV_변수
 		String : S_변수
 		모델 : M_변수
+		버튼 Rect : BR_변수
 		 
 		해볼꺼
 		1. 모델 파일을 파일 탐색기로 찾게 하는 기능 만드릭
@@ -44,7 +46,20 @@ int main(int argv, char* args[]) {
 		2. 모델을 불러오기
 		3. 연예인 이미지의 얼굴을 확인하고 벡터화
 	*/
-
+	/*
+	if (ButtonTest) {
+		cv::Mat test(400, 400, CV_8UC3);
+		
+		cv::namedWindow("TestButton");
+		cv::setMouseCallback("TestButton", TestClicked);
+		while (1) {
+			test = cv::Scalar(0xFF);
+			cv::imshow("TestButton", test);
+			cv::waitKey();
+		}	
+	}
+	*/
+	
 	if (CheckCam) {
 		//카메라가 잘 있는지 확인, 만약 잘찍히지 않거나 없거나 발견되지 않으면 사진으로 하거나 프로그램을 끄거나 등등 하기
 
@@ -139,13 +154,15 @@ int main(int argv, char* args[]) {
 
 		//웹캠을 출력할 곳
 		cv::Mat webcam(CamHeight, CamWidth, CV_8UC3);
-		webcam = cv::Scalar(0x88, 0xC9, 0x03);
-		GUICon::putWebcamView(webcam, preSetImage);
+		webcam = cv::Scalar(0x88, 0xC9, 0x03); //색 지정
+		GUICon::putWebcamView(webcam, preSetImage); //그 색으로 웹캠뷰 채우는거
 
 		//프리뷰 이미지 출력할 곳
 		cv::Mat preImage((GUIWidth - GUIHeight) / 2 - 40, (GUIWidth - GUIHeight) / 2 - 40, CV_8UC3); //가로 전체에서 메인 카메라 표시 될 부분을 뺀거의 반에서 사이즈 조정 때문에 양옆 위아래 20씩 간격을 만들기 위해 40을 뺌
-		preImage = cv::Scalar(0x00, 0x00, 0x00);
-		GUICon::putPreImageView(preImage, preSetImage);
+		preImage = cv::Scalar(0x00, 0x00, 0x00); //색 지정
+		GUICon::putPreImageView(preImage, preSetImage); //그 색으로 프리뷰 채우는거
+
+		frame = preSetImage; //메인 frame 처리 하는 곳으로 넘겨주는거
 
 		//cv::imshow("Test", preSetImage); //frame 보여주는거
 
@@ -205,12 +222,12 @@ int main(int argv, char* args[]) {
 								CPputImage(I_celeb_img, originalViewImage, cv::Rect(xpos, 0, I_celeb_img.nc(), I_celeb_img.nr()));
 							}
 							cv::cvtColor(originalViewImage, originalViewImage, cv::COLOR_RGB2BGR);
-							GUICon::putWebcamView(originalViewImage, preSetImage);
+							GUICon::putWebcamView(originalViewImage, frame);
 						}
 					}
-					GUICon::putPreImageView(I_face_chip, preSetImage);
-					cv::imshow("Test", preSetImage);
-					cv::waitKey();
+					GUICon::putPreImageView(I_face_chip, frame);
+					cv::imshow("Test", frame);
+					cv::waitKey(0);
 					Sleep(LoadImageViewDelay);
 				}
 
@@ -249,7 +266,12 @@ int main(int argv, char* args[]) {
 		//GUI를 띄우는거
 
 		//웹캠의 가로 세로도 다르기 때문에 잘라주는 것도 해야함
-		
+
+		cv::namedWindow("Test"); //윈도우 이름을 지정하는 것 같은데 확실하게는 모르지만 setMouseCallback을 쓸려면 써야함
+		cv::setMouseCallback("Test", GUICon::buttonsCheck); //마우스의 정보를 보내주는 함수, Test라는 윈도우에서 마우스가 움직이거나 어떤 반응을 하면 buttonsCheck함수를 호출함
+
+		cv::imshow("Test", frame);
+		cv::waitKey();
 	}
 
 	system("pause");
@@ -362,6 +384,11 @@ void GUIInitImage(cv::Mat& O_image) {
 
 
 	CPputText(O_image, "Face Recognition", cv::Point(O_image.cols - ((O_image.cols - O_image.rows) / 2), 30), OriCenter, "맑은 고딕", FW_BOLD, 6, RGBScale(0xED, 0xED, 0xED), RGBScale(0x11, 0x11, 0x11));
+
+	//버튼 들
+	//라운드 버튼을 만들기가 어렵기 때문에 사진으로 대체하거나 각이 있는 사각형으로 해야할 듯
+
+	//텍스트 들
 }
 
 bool modelisAlive(std::string& path) {
@@ -429,4 +456,26 @@ std::string getFileName(std::filesystem::path& path) {
 
 void setColor(short textcolor, short background) {
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), textcolor + background * 16);
+}
+
+void GUICon::buttonsCheck(int event, int x, int y, int flags, void* userData) {
+	std::cout << event << " " << x << " " << y << " " << flags << " " << userData << std::endl;
+
+	/*
+		event는 마우스로 어떤 짓을 한 것 클릭이나 스크롤 등등
+		x, y는 마우스가 OpenCV윈도우 위에서 어디 위치에 있는지
+		나머지는 안씀
+
+		event
+			1 : 왼쪽 마우스 눌름
+			4 : 왼쪽 마우스 땜
+			2 : 오른쪽 마우스 눌름
+			5 : 오른쪽 마우스 땜
+	*/
+
+	//클릭한 상태에서 다른 곳에서 마우스를 땠을 때는 취소로 해서 인식이 안되게 해야하기 때문에 
+	//특정 위치에서 1번하고 4번이 둘다 감지 됬을 때 그 버튼을 실행하게 해야함
+
+
+
 }
