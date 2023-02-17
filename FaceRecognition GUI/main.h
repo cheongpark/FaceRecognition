@@ -120,10 +120,20 @@ void CPputText(cv::Mat& O_image, cv::String text, cv::Point org, int ori, const 
 
 //GUI의 여러가지 UI를 컨트롤 할 수 있는 함수 모음
 namespace GUICon {
-    cv::Rect BR_capture;
-    cv::Rect BR_preview;
-    cv::Rect BR_export;
-    cv::Rect BR_landMark;
+    namespace Var {
+        POINT mouse; //마우스의 위치
+
+        //0이면 아무것도 아님 1부터
+        int pushButtonNum; //버튼이 눌렸을 때 몇번째 버튼이 눌렸던건지 저장하는 함수
+        
+        cv::Rect BR_capture;
+        cv::Rect BR_preview;
+        cv::Rect BR_export;
+
+        RECT CBR_capture;
+        RECT CBR_preview;
+        RECT CBR_export;
+    }
 
     //버튼
     void buttonsCheck(int event, int x, int y, int flags, void* userData);
@@ -149,6 +159,8 @@ namespace GUICon {
 
         CPputImage(image, O_image, cv::Rect(GUIHeight + 20, 180 + 20, ((GUIWidth - GUIHeight) / 2) - 40, ((GUIWidth - GUIHeight) / 2) - 40));
     }
+
+    void cvRect2RECT(cv::Rect& I_rect, RECT& O_rect); //PtlnRect를 사용하는데 windef.h의 Rect만 되기 때문에 OpenCV로 버튼도 만들어야 하는데 2가지를 다 할려면 각각의 변수가 필요해서
 }
 
 //GUI에서 고정 이미지를 만들고 나중에 필요할 때 마다 새로 삽입하는 방식으로 하기 위해

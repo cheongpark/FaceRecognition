@@ -23,19 +23,34 @@ int main(int argv, char* args[]) {
 	bool useFaceLandMark = true; //메인 웹캠뷰 쪽에서 얼굴을 인식해서 빨간 상자를 띄어주는걸 할지 말지
 
 	/*
+		구현된 중요 기술들
+
+		한글이나 영어를 컴퓨터의 폰트로 OpenCV 이미지에 넣는 것 (제일 어려웠음 일주일 이상 걸림)
+		모델들이 있는지 판단하고 가져오는 것
+		모델이 감지가 안되는 경우 가져올지 다른걸 사용할지 정하는거 (가져오는 기능 아직 미구현)
+		특정 경로에 있는 사진들을 모두 가져와 얼굴이 1개인 것을 확인하고 벡터로 저장하는거
+		카메라들 감지 하는 것
+		원본 이미지를 정사각형에 표시할 때 이미지를 정사각형에 맞춰 축소하고 빈 공간을 채우는 것 (어려웠음)
+		마우스가 눌러진 상태에서 다른 곳에서 마우스를 떼면 감지가 안되는 것으로 (어려웠음)
+	*/
+
+	/*
 		cols 가로
 		rows 세로
+
+		//랜드마크 버튼은 메뉴로 지정할 수 있도록 제작
 		
-		Rect 인수는 (x, y, width, height)임 즉 어디에 넣을껀지와 가로 세로 길이만 입력하면 됨.
+		cv::Rect 인수는 (x, y, width, height)임 즉 어디에 넣을껀지와 가로 세로 길이만 입력하면 됨.
 
 		이름 규칙
-		이미지 : I_변수
-		프리뷰 이미지 : PI_변수
-		비디오 : V_변수
-		프리뷰 비디오 : PV_변수
-		String : S_변수
-		모델 : M_변수
-		버튼 Rect : BR_변수
+		이미지 : I_변수 //Image
+		프리뷰 이미지 : PI_변수 //Preview Image
+		비디오 : V_변수 //Video
+		프리뷰 비디오 : PV_변수 //Preview Video
+		String : S_변수 //String
+		모델 : M_변수 //Model
+		버튼 Rect : BR_변수 //Button Rect
+		버튼 위치 비교용 Rect : CBR_변수 //Compare Button Rect
 		 
 		해볼꺼
 		1. 모델 파일을 파일 탐색기로 찾게 하는 기능 만드릭
@@ -227,7 +242,7 @@ int main(int argv, char* args[]) {
 					}
 					GUICon::putPreImageView(I_face_chip, frame);
 					cv::imshow("Test", frame);
-					cv::waitKey(0);
+					cv::waitKey(20);
 					Sleep(LoadImageViewDelay);
 				}
 
@@ -385,8 +400,30 @@ void GUIInitImage(cv::Mat& O_image) {
 
 	CPputText(O_image, "Face Recognition", cv::Point(O_image.cols - ((O_image.cols - O_image.rows) / 2), 30), OriCenter, "맑은 고딕", FW_BOLD, 6, RGBScale(0xED, 0xED, 0xED), RGBScale(0x11, 0x11, 0x11));
 
+	//랜드마크 버튼은 메뉴로 지정할 수 있도록 제작
+
 	//버튼 들
 	//라운드 버튼을 만들기가 어렵기 때문에 사진으로 대체하거나 각이 있는 사각형으로 해야할 듯
+	
+	//버튼이 자리할 수 있는 위치를 구한 후 그곳 안에서 여백을 생각하면서 버튼 위치를 지정해야함
+	int buttonsMargin = 10; //총 버튼들의 왼쪽 오른쪽 끝 여백
+	int buttonsPosXS = GUIHeight + buttonsMargin; //버튼들 위치 X 시작점
+	int buttonsPosXE = GUIWidth - buttonsMargin; //버튼들 위치 X 끝점
+	int buttonWidth = (buttonsPosXE - buttonsPosXS) / 3 - 5; //각 버튼이 차지할 가로 3은 버튼 갯수 5는 버튼 사이사이 간격
+	
+	//버튼 위치 지정 & RECT로 변환
+	//GUICon::BR_capture = cv::Rect(buttonsPosXS,  ) //첫번째 버튼 위치 지정
+	GUICon::Var::BR_capture = cv::Rect(CamWidth + 10, 0, 100, 100); //테스트 버튼
+	GUICon::Var::BR_preview = cv::Rect(CamWidth + 10, 100 + 50, 100, 100); //테스트 버튼
+
+	GUICon::cvRect2RECT(GUICon::Var::BR_capture, GUICon::Var::CBR_capture);
+	GUICon::cvRect2RECT(GUICon::Var::BR_preview, GUICon::Var::CBR_preview);
+	GUICon::cvRect2RECT(GUICon::Var::BR_export, GUICon::Var::CBR_export);
+
+	//버튼 그리기
+	cv::rectangle(O_image, GUICon::Var::BR_capture, cv::Scalar(0xFF, 0xFF, 0xFF)); //테스트 버튼
+	cv::rectangle(O_image, GUICon::Var::BR_preview, cv::Scalar(0xFF, 0xFF, 0xFF)); //테스트 버튼
+
 
 	//텍스트 들
 }
@@ -459,7 +496,7 @@ void setColor(short textcolor, short background) {
 }
 
 void GUICon::buttonsCheck(int event, int x, int y, int flags, void* userData) {
-	std::cout << event << " " << x << " " << y << " " << flags << " " << userData << std::endl;
+	//std::cout << event << " " << x << " " << y << " " << flags << " " << userData << std::endl;
 
 	/*
 		event는 마우스로 어떤 짓을 한 것 클릭이나 스크롤 등등
@@ -476,6 +513,59 @@ void GUICon::buttonsCheck(int event, int x, int y, int flags, void* userData) {
 	//클릭한 상태에서 다른 곳에서 마우스를 땠을 때는 취소로 해서 인식이 안되게 해야하기 때문에 
 	//특정 위치에서 1번하고 4번이 둘다 감지 됬을 때 그 버튼을 실행하게 해야함
 
+	//mouse, pushButtonNum
+	//event가 1이면 PtlnRect로 눌린 버튼이 있으면 그 버튼을 pushButtonNum에 저장하고 눌린 버튼이 없다면 pushButtonNum를 0으로
+	//event가 4이면 pushButtonNum가 0이 아닐 때 pushButtonNum이 4번 눌렸을 때와 같으면 눌린 것으로 하고 같지 않거나 같으면 pushButtonNum를 0으로 
+	
+	if (event == 1) {
+		//왼쪽 마우스 눌렀을 때
 
+		GUICon::Var::mouse = POINT(x, y); //마우스 정보를 저장하는 것
 
+		//PtlnRect는 마우스가 RECT의 위치 안에 있을 때 true를 내보냄
+		
+		//첫번째 버튼 안에 있을 때
+		if (PtInRect(&GUICon::Var::CBR_capture, GUICon::Var::mouse)) //1번째 버튼의 위치에 마우스가 눌렸을 때
+			GUICon::Var::pushButtonNum = 1;
+		else if (PtInRect(&GUICon::Var::CBR_preview, GUICon::Var::mouse)) //2번째 버튼의 위치에 마우스가 눌렸을 때
+			GUICon::Var::pushButtonNum = 2;
+		else if (PtInRect(&GUICon::Var::CBR_export, GUICon::Var::mouse)) //3번째 버튼의 위치에 마우스가 눌렸을 때
+			GUICon::Var::pushButtonNum = 3;
+		else
+			GUICon::Var::pushButtonNum = 0;
+	}
+	if (event == 4 && GUICon::Var::pushButtonNum != 0) { //왼쪽 마우스를 떼고 눌렸을 때 버튼이 있을 때
+		//왼쪽 마우스 땠을 때
+
+		GUICon::Var::mouse = POINT(x, y); //마우스 정보를 저장하는 것
+
+		if (PtInRect(&GUICon::Var::CBR_capture, GUICon::Var::mouse)) { //1번 버튼에서 마우스가 때졌을 때
+			if (GUICon::Var::pushButtonNum == 1) { //1번 버튼이 눌린게 확실해졌을 때
+				std::cout << "1번 버튼 눌림" << std::endl;
+			}
+		}
+		else if (PtInRect(&GUICon::Var::CBR_preview, GUICon::Var::mouse)) { //2번 버튼에서 마우스가 때졌을 때
+			if (GUICon::Var::pushButtonNum == 2) { //2번 버튼이 눌린게 확실해졌을 때
+				std::cout << "2번 버튼 눌림" << std::endl;
+			}
+		}
+		else if (PtInRect(&GUICon::Var::CBR_export, GUICon::Var::mouse)) { //3번 버튼에서 마우스가 때졌을 때
+			if (GUICon::Var::pushButtonNum == 3) { //3번 버튼이 눌린게 확실해졌을 때
+				std::cout << "3번 버튼 눌림" << std::endl;
+			}
+		}
+			
+		GUICon::Var::pushButtonNum = 0; //눌리지 않은 것으로
+	}
+
+	//std::cout << GUICon::Var::pushButtonNum << std::endl; //테스트용
+}
+
+void GUICon::cvRect2RECT(cv::Rect& I_rect, RECT& O_rect) {
+	//ChatGPT가 만들어줌 
+	//CV::Rect를 Windef.h의 RECT로 변환시켜주는 명령어
+	O_rect.left = I_rect.x;
+	O_rect.top = I_rect.y;
+	O_rect.right = I_rect.x + I_rect.width;
+	O_rect.bottom = I_rect.y + I_rect.height;
 }
