@@ -21,6 +21,13 @@ int main(int argv, char* args[]) {
 	cv::Mat preSetImage(GUIHeight, GUIWidth, CV_8UC3); //고정 GUI를 저장하는 곳
 
 	bool useFaceLandMark = true; //메인 웹캠뷰 쪽에서 얼굴을 인식해서 빨간 상자를 띄어주는걸 할지 말지
+	
+	cv::VideoCapture WebCam;
+	int CamCount = 0; //카메라 갯수 
+	int WebCamWidth = 0; //웹캠 가로
+	int WebCamHeight = 0; //웹캠 세로
+
+	cv::namedWindow(WinName); //윈도우 이름을 지정하는 것 같은데 확실하게는 모르지만 setMouseCallback을 쓸려면 써야함
 
 	/*
 		구현된 중요 기술들
@@ -32,6 +39,8 @@ int main(int argv, char* args[]) {
 		카메라들 감지 하는 것
 		원본 이미지를 정사각형에 표시할 때 이미지를 정사각형에 맞춰 축소하고 빈 공간을 채우는 것 (어려웠음)
 		마우스가 눌러진 상태에서 다른 곳에서 마우스를 떼면 감지가 안되는 것으로 (어려웠음)
+		크기 조절 해도 각자 위치에 있을 수 있도록 GUI 배치
+	
 	*/
 
 	/*
@@ -80,7 +89,6 @@ int main(int argv, char* args[]) {
 
 		//카메라 갯수 확인하기
 		cv::VideoCapture cap;
-		int CamCount = 0; //카메라 갯수 
 
 		setColor(COLOR::GREEN);
 		while (true) {
@@ -282,11 +290,56 @@ int main(int argv, char* args[]) {
 
 		//웹캠의 가로 세로도 다르기 때문에 잘라주는 것도 해야함
 
-		cv::namedWindow("Test"); //윈도우 이름을 지정하는 것 같은데 확실하게는 모르지만 setMouseCallback을 쓸려면 써야함
-		cv::setMouseCallback("Test", GUICon::buttonsCheck); //마우스의 정보를 보내주는 함수, Test라는 윈도우에서 마우스가 움직이거나 어떤 반응을 하면 buttonsCheck함수를 호출함
+		cv::setMouseCallback(WinName, GUICon::buttonsCheck); //마우스의 정보를 보내주는 함수, Test라는 윈도우에서 마우스가 움직이거나 어떤 반응을 하면 buttonsCheck함수를 호출함
 
-		cv::imshow("Test", frame);
-		cv::waitKey();
+		int camera_track_val = 0;
+		int pre_camera_track_val = -1;
+		cv::createTrackbar("Camera", WinName, &camera_track_val, CamCount - 1);
+
+		cv::Mat WebCamFrame;
+
+		while (true) {
+			if (pre_camera_track_val != camera_track_val) {
+				WebCam.open(camera_track_val);
+				if (!WebCam.isOpened()) {
+					setColor(COLOR::RED);
+					std::cout << camera_track_val << "의 카메라를 사용할 수 없어 " << pre_camera_track_val << "번 카메라로 계속 합니다." << std::endl;
+					setColor();
+					camera_track_val = pre_camera_track_val;
+				} 
+				else {
+					pre_camera_track_val = camera_track_val;
+
+					setColor(COLOR::GREEN);
+					std::cout << camera_track_val << " 카메라로 변경이 감지되었습니다." << std::endl;
+					setColor();
+
+					WebCamWidth = static_cast<int>(WebCam.get(cv::CAP_PROP_FRAME_WIDTH)); //웹캠의 가로 길이를 가져오는 것
+					WebCamHeight = static_cast<int>(WebCam.get(cv::CAP_PROP_FRAME_HEIGHT)); //웹캠의 세로 길이를 가져오는 것
+				}
+			}
+
+			if (WebCam.read(WebCamFrame)) { //웹캠에서 이미지를 읽을 수 있을 때
+				if (WebCamWidth >= WebCamHeight) //웹캠이 정사각형이거나 가로가 더 길때
+					WebCamFrame = WebCamFrame(cv::Range(0, WebCamHeight), cv::Range((WebCamWidth - WebCamHeight) / 2, (WebCamWidth - WebCamHeight) / 2 + WebCamHeight));
+				else //세로가 더 길때
+					WebCamFrame = WebCamFrame(cv::Range((WebCamHeight - WebCamWidth) / 2, (WebCamHeight - WebCamWidth) / 2 + WebCamWidth), cv::Range(0, WebCamWidth));
+
+				GUICon::putWebcamView(WebCamFrame, frame);			
+			}
+			else { //웹캠에서 이미지를 읽을 수 없을 때
+				setColor(COLOR::RED);
+				std::cout << "웹캠에서 이미지를 읽을 수 없습니다." << std::endl;
+				setColor();
+			}
+
+			cv::imshow(WinName, frame);
+			
+			char key = cv::waitKey(30);
+			if (key == 27) {
+				break;
+			}
+		}
 	}
 
 	system("pause");
@@ -393,12 +446,12 @@ void CPputText(cv::Mat& O_image, cv::String text, cv::Point org, int ori, const 
 }
 
 void GUIInitImage(cv::Mat& O_image) {
-	O_image = cv::Scalar(0x17, 0x17, 0x17); //배경 색을 약간 어두운 색으로 칠해주는 것
+	O_image = cv::Scalar(BackgroundColor.b, BackgroundColor.g, BackgroundColor.r); //배경 색을 약간 어두운 색으로 칠해주는 것
 	cv::line(O_image, cv::Point(O_image.rows, 0), cv::Point(O_image.rows, O_image.rows), cv::Scalar(0x37, 0x00, 0xDA), 2); //카메라 보여질 부분과 정보 보여질 부분을 나눠주는 선
 	cv::rectangle(O_image, cv::Rect(GUIHeight + 20, 180 + 20, ((GUIWidth - GUIHeight) / 2) - 40, ((GUIWidth - GUIHeight) / 2) - 40), cv::Scalar(0xED, 0xED, 0xED), 1 + 2, 4, 0); //프리뷰쪽 테투리 쳐주는거 1 + 2에서 2가 선 두께임
 
 
-	CPputText(O_image, "Face Recognition", cv::Point(O_image.cols - ((O_image.cols - O_image.rows) / 2), 30), OriCenter, "맑은 고딕", FW_BOLD, 6, RGBScale(0xED, 0xED, 0xED), RGBScale(0x11, 0x11, 0x11));
+	CPputText(O_image, "Face Recognition", cv::Point(O_image.cols - ((O_image.cols - O_image.rows) / 2), 30), OriCenter, "맑은 고딕", FW_BOLD, 6, RGBScale(0xED, 0xED, 0xED), BackgroundColor);
 
 	//랜드마크 버튼은 메뉴로 지정할 수 있도록 제작
 
@@ -406,15 +459,22 @@ void GUIInitImage(cv::Mat& O_image) {
 	//라운드 버튼을 만들기가 어렵기 때문에 사진으로 대체하거나 각이 있는 사각형으로 해야할 듯
 	
 	//버튼이 자리할 수 있는 위치를 구한 후 그곳 안에서 여백을 생각하면서 버튼 위치를 지정해야함
-	int buttonsMargin = 10; //총 버튼들의 왼쪽 오른쪽 끝 여백
+	int buttonsMargin = 10; //총 버튼들의 왼쪽 오른쪽 아래 끝 여백
 	int buttonsPosXS = GUIHeight + buttonsMargin; //버튼들 위치 X 시작점
 	int buttonsPosXE = GUIWidth - buttonsMargin; //버튼들 위치 X 끝점
-	int buttonWidth = (buttonsPosXE - buttonsPosXS) / 3 - 5; //각 버튼이 차지할 가로 3은 버튼 갯수 5는 버튼 사이사이 간격
 	
+	int buttonWidth = (buttonsPosXE - buttonsPosXS) / 3 - 5; //각 버튼이 차지할 가로 3은 버튼 갯수 5는 버튼 사이사이 간격
+	int buttonHeight = 50;
+	int buttonY = GUIHeight - buttonHeight - buttonsMargin;
+
 	//버튼 위치 지정 & RECT로 변환
 	//GUICon::BR_capture = cv::Rect(buttonsPosXS,  ) //첫번째 버튼 위치 지정
 	GUICon::Var::BR_capture = cv::Rect(CamWidth + 10, 0, 100, 100); //테스트 버튼
 	GUICon::Var::BR_preview = cv::Rect(CamWidth + 10, 100 + 50, 100, 100); //테스트 버튼
+
+	GUICon::Var::BR_capture = cv::Rect(buttonsPosXS, buttonY, buttonWidth, buttonHeight);
+	GUICon::Var::BR_preview = cv::Rect(buttonsPosXS + (5 + 5) + buttonWidth, buttonY, buttonWidth, buttonHeight);
+	GUICon::Var::BR_export = cv::Rect(buttonsPosXS + (5 + 5) + buttonWidth + (5 + 5) + buttonWidth, buttonY, buttonWidth, buttonHeight);
 
 	GUICon::cvRect2RECT(GUICon::Var::BR_capture, GUICon::Var::CBR_capture);
 	GUICon::cvRect2RECT(GUICon::Var::BR_preview, GUICon::Var::CBR_preview);
@@ -423,9 +483,12 @@ void GUIInitImage(cv::Mat& O_image) {
 	//버튼 그리기
 	cv::rectangle(O_image, GUICon::Var::BR_capture, cv::Scalar(0xFF, 0xFF, 0xFF)); //테스트 버튼
 	cv::rectangle(O_image, GUICon::Var::BR_preview, cv::Scalar(0xFF, 0xFF, 0xFF)); //테스트 버튼
+	cv::rectangle(O_image, GUICon::Var::BR_export, cv::Scalar(0xFF, 0xFF, 0xFF));
 
-
-	//텍스트 들
+	//버튼 텍스트 들
+	CPputText(O_image, "CAPTURE", cv::Point(GUICon::Var::BR_capture.x + (GUICon::Var::BR_capture.width / 2), GUICon::Var::BR_capture.y + 13), 1, "맑은 고딕", FW_BOLD, 3, RGBScale(0xED, 0xED, 0xED), BackgroundColor);
+	CPputText(O_image, "PREVIEW", cv::Point(GUICon::Var::BR_preview.x + (GUICon::Var::BR_preview.width / 2), GUICon::Var::BR_preview.y + 13), 1, "맑은 고딕", FW_BOLD, 3, RGBScale(0xED, 0xED, 0xED), BackgroundColor);
+	CPputText(O_image, "EXPORT", cv::Point(GUICon::Var::BR_export.x + (GUICon::Var::BR_export.width / 2), GUICon::Var::BR_export.y + 13), 1, "맑은 고딕", FW_BOLD, 3, RGBScale(0xED, 0xED, 0xED), BackgroundColor);
 }
 
 bool modelisAlive(std::string& path) {

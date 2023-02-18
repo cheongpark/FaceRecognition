@@ -1,11 +1,13 @@
 #pragma once
 #include "stdafx.h"
 
+#define WinName "Celeb Face Recognition"
+
 //모델이 만약 없으면 설정을 하고 넘어갈지 아니면 그냥 넘어갈지 정하는거
 #define CheckModel false
 
 //개발 상황에 따라 필요없는건 꺼야 할 수도 있는 것들
-#define CheckCam false //카메라의 유무를 확인 등 카메라 관련 세팅을 보거나 설정할지
+#define CheckCam true //카메라의 유무를 확인 등 카메라 관련 세팅을 보거나 설정할지
 #define UseModelLoad false //모델을 가져올지 안가져올지
 #define PreSetImage true //미리 GUI를 세팅하는 것
 #define TransCelebVector false //이미지를 벡터로 바꿀지 안바꿀지 "이거 할 땐 Debug로 안됨 Release로 해야함"
@@ -29,6 +31,8 @@
 #define OriLeft 0 
 #define OriCenter 1
 #define OriRight 2
+
+#define BackgroundColor RGBScale(0x17, 0x17, 0x17)
 
 //-----모델을 사용하기 위한 필수 명령어 들-----
 template <template <int, template<typename>class, int, typename> class block, int n, template<typename>class bn, typename subnet>
