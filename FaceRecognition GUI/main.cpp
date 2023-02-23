@@ -40,10 +40,14 @@ int main(int argv, char* args[]) {
 		원본 이미지를 정사각형에 표시할 때 이미지를 정사각형에 맞춰 축소하고 빈 공간을 채우는 것 (어려웠음)
 		마우스가 눌러진 상태에서 다른 곳에서 마우스를 떼면 감지가 안되는 것으로 (어려웠음)
 		크기 조절 해도 각자 위치에 있을 수 있도록 GUI 배치
-	
+		카메라의 가로가 크다면 세로 크기에 맞춰서 정사각형으로 자르고 세로가 크면 그 반대로 웹캠을 잘라주는 기능
+		카메라에서 얼굴을 찾아서 사각형으로 어느 위치에 있는지 표시해주는 기능
+
 	*/
 
 	/*
+		프리뷰 쪽에는 실시간으로 웹캠의 얼굴을 출력하는건 안함 그쪽은 결과창이기 때문에		
+
 		cols 가로
 		rows 세로
 
@@ -157,8 +161,8 @@ int main(int argv, char* args[]) {
 			std::cout << SpPath;
 			setColor(COLOR::BLUE);
 			std::cout << " 모델은 확인되지 않았습니다." << std::endl;
-
 			std::cout << "그렇기 때문에 속도가 빠른 것으로 모두 적용합니다. 다만 정확도가 낮아질 수 있습니다." << std::endl;
+			setColor();
 
 			dlib::deserialize(FastSpPath) >> M_sp;
 			dlib::deserialize(FastSpPath) >> M_fastsp;
@@ -170,22 +174,23 @@ int main(int argv, char* args[]) {
 		}
 		applyModel(ResNetPath, M_resnet);
 	}
-	if (PreSetImage) {
+	if (UsePreSetImage) {
 		//사전에 GUI를 미리 이미지로 만들어서 함 이걸로 이미지 가져올 때 미리 보여주는 식으로
 		//속도를 위해 고정 위치인 UI는 다른 곳에 미리 저장을 하고 업데이트 해야할 때 마다 저장한걸 끼워넣기
 		GUIInitImage(preSetImage);
 
-		//웹캠을 출력할 곳
+		//웹캠을 출력할 곳 색으로 표시
 		cv::Mat webcam(CamHeight, CamWidth, CV_8UC3);
 		webcam = cv::Scalar(0x88, 0xC9, 0x03); //색 지정
 		GUICon::putWebcamView(webcam, preSetImage); //그 색으로 웹캠뷰 채우는거
 
-		//프리뷰 이미지 출력할 곳
+		//프리뷰 이미지 출력할 곳 색으로 표시
 		cv::Mat preImage((GUIWidth - GUIHeight) / 2 - 40, (GUIWidth - GUIHeight) / 2 - 40, CV_8UC3); //가로 전체에서 메인 카메라 표시 될 부분을 뺀거의 반에서 사이즈 조정 때문에 양옆 위아래 20씩 간격을 만들기 위해 40을 뺌
 		preImage = cv::Scalar(0x00, 0x00, 0x00); //색 지정
 		GUICon::putPreImageView(preImage, preSetImage); //그 색으로 프리뷰 채우는거
-
-		frame = preSetImage; //메인 frame 처리 하는 곳으로 넘겨주는거
+		
+		preSetImage.copyTo(frame); //메인 frame 처리 하는 곳으로 넘겨주는거
+		//frame = preSetImage; //메인 frame 처리 하는 곳으로 넘겨주는거 <-- 이건 참조하는 그런 것 때문에 나중에 frame을 바꿔버리면 preSetImage도 같이 바뀜 그래서 못씀
 
 		//cv::imshow("Test", preSetImage); //frame 보여주는거
 
@@ -226,7 +231,7 @@ int main(int argv, char* args[]) {
 						//만약 정사각형이면 이 과정을 패스
 
 						if (I_celeb_img.nc() == I_celeb_img.nr())
-							GUICon::putWebcamView(I_celeb_img, preSetImage);
+							GUICon::putWebcamView(I_celeb_img, frame);
 						else {
 							//이미지의 길이에 맞춰 배경 생성하고 색 넣기
 							int squareLen = (I_celeb_img.nc() < I_celeb_img.nr() ? I_celeb_img.nr() : I_celeb_img.nc());
@@ -249,7 +254,7 @@ int main(int argv, char* args[]) {
 						}
 					}
 					GUICon::putPreImageView(I_face_chip, frame);
-					cv::imshow("Test", frame);
+					cv::imshow(WinName, frame);
 					cv::waitKey(20);
 					Sleep(LoadImageViewDelay);
 				}
@@ -283,49 +288,59 @@ int main(int argv, char* args[]) {
 		setColor(COLOR::GREEN);
 		std::cout << "완료" << std::endl << std::endl;
 		setColor();
+		
+		preSetImage.copyTo(frame); //메인 frame 처리 하는 곳으로 넘겨주는거
 	}
-
+	
 	if (UseOpenCVGUI) {
 		//GUI를 띄우는거
-
+		
 		//웹캠의 가로 세로도 다르기 때문에 잘라주는 것도 해야함
 
 		cv::setMouseCallback(WinName, GUICon::buttonsCheck); //마우스의 정보를 보내주는 함수, Test라는 윈도우에서 마우스가 움직이거나 어떤 반응을 하면 buttonsCheck함수를 호출함
 
-		int camera_track_val = 0;
-		int pre_camera_track_val = -1;
-		cv::createTrackbar("Camera", WinName, &camera_track_val, CamCount - 1);
+		int camera_track_val = 0; //카메라 설정 바의 현재 값 (기본 0)
+		int pre_camera_track_val = -1; //카메라 설정 바의 바뀌기 이전 값 (-1은 값 범위에서 벗어나게 해야지 되서)
+		cv::createTrackbar("Camera", WinName, &camera_track_val, CamCount - 1); //카메라 설정 바 만드는거
 
-		cv::Mat WebCamFrame;
-
+		cv::Mat WebCamFrame; //웹캠에서 이미지 가져온거 저장하는거
 		while (true) {
-			if (pre_camera_track_val != camera_track_val) {
-				WebCam.open(camera_track_val);
-				if (!WebCam.isOpened()) {
-					setColor(COLOR::RED);
-					std::cout << camera_track_val << "의 카메라를 사용할 수 없어 " << pre_camera_track_val << "번 카메라로 계속 합니다." << std::endl;
-					setColor();
-					camera_track_val = pre_camera_track_val;
-				} 
-				else {
-					pre_camera_track_val = camera_track_val;
+			preSetImage.copyTo(frame); //미리 준비된 이미지를 frame에 넣는거 frame은 표시할꺼 속도를 빠르게 하기위해서 미리 만든 걸 넣는거
+			
+			//카메라를 읽을 수 있는지 없는지, 만약 읽을 수 없으면 카메라를 변경함
+			if (pre_camera_track_val != camera_track_val) { //카메라 트랙 바의 값이 바뀌면
+				WebCam.open(camera_track_val); //웹캠을 트랙바에서 선택한 대로 열기
+				pre_camera_track_val = camera_track_val; //이전 값을 현재 값으로 맞추기
 
-					setColor(COLOR::GREEN);
-					std::cout << camera_track_val << " 카메라로 변경이 감지되었습니다." << std::endl;
-					setColor();
+				setColor(COLOR::GREEN);
+				std::cout << camera_track_val << " 카메라로 변경했습니다." << std::endl;
+				setColor();
 
-					WebCamWidth = static_cast<int>(WebCam.get(cv::CAP_PROP_FRAME_WIDTH)); //웹캠의 가로 길이를 가져오는 것
-					WebCamHeight = static_cast<int>(WebCam.get(cv::CAP_PROP_FRAME_HEIGHT)); //웹캠의 세로 길이를 가져오는 것
-				}
+				WebCamWidth = static_cast<int>(WebCam.get(cv::CAP_PROP_FRAME_WIDTH)); //웹캠의 가로 길이를 가져오는 것
+				WebCamHeight = static_cast<int>(WebCam.get(cv::CAP_PROP_FRAME_HEIGHT)); //웹캠의 세로 길이를 가져오는 것
 			}
-
+			
 			if (WebCam.read(WebCamFrame)) { //웹캠에서 이미지를 읽을 수 있을 때
 				if (WebCamWidth >= WebCamHeight) //웹캠이 정사각형이거나 가로가 더 길때
 					WebCamFrame = WebCamFrame(cv::Range(0, WebCamHeight), cv::Range((WebCamWidth - WebCamHeight) / 2, (WebCamWidth - WebCamHeight) / 2 + WebCamHeight));
 				else //세로가 더 길때
 					WebCamFrame = WebCamFrame(cv::Range((WebCamHeight - WebCamWidth) / 2, (WebCamHeight - WebCamWidth) / 2 + WebCamWidth), cv::Range(0, WebCamWidth));
 
-				GUICon::putWebcamView(WebCamFrame, frame);			
+				//웹캠에서 얼굴을 찾아서 사각형으로 표시해주기
+				dlib::cv_image<dlib::bgr_pixel> cimg(WebCamFrame); //얼굴을 찾기 위해 Dlib의 이미지로 변경해주는거 매트릭스 형태임
+				auto faces = detector(cimg); //매트릭스 이미지에서 얼굴들을 찾아서 faces로 저장하는 것
+				int facesCount = faces.size(); //얼굴 개수를 저따가 넣는거
+
+				char facesCountText[30]; //얼굴 몇개 있는지 텍스트 넣을 곳
+				sprintf_s(facesCountText, "얼굴 %d명 감지 되었습니다.", facesCount);
+				CPputText(frame, facesCountText, cv::Point(frame.cols - ((frame.cols - frame.rows) / 2), 110), OriCenter, "맑은 고딕", FW_BOLD, 3, (facesCount != 1 ? RGBScale(0xDA, 0x00, 0x37) : RGBScale(0xED, 0xED, 0xED)), BackgroundColor); //frame에 얼굴이 몇개 있는지 텍스트로 띄어주는 거 중간에 조건문은 1명이 아니면 빨간색으로 글자 띄우는거
+
+				if (facesCount == 1) {
+					dlib::chip_details faceChip = dlib::get_face_chip_details(M_fastsp(cimg, faces[0]), CamHeight, 0.2); //찾은 얼굴의 위치를 저장하는 것 0.2는 사각형과 얼굴 내부 간격 같은거임
+					cv::rectangle(WebCamFrame, cv::Rect(faceChip.rect.left(), faceChip.rect.top(), faceChip.rect.width(), faceChip.rect.height()), FaceLandMarkColor, 1, 4, 0); //내가 지정한 색으로 얼굴에 아까 구한 Rect 값으로 사각형을 그리는거임
+				}
+
+				GUICon::putWebcamView(WebCamFrame, frame); //메인 웹캠 뷰 쪽에 웹캠 사진 넣는거
 			}
 			else { //웹캠에서 이미지를 읽을 수 없을 때
 				setColor(COLOR::RED);
@@ -443,6 +458,12 @@ void CPputText(cv::Mat& O_image, cv::String text, cv::Point org, int ori, const 
 			}
 		}
 	}
+
+	//메모리에서 삭제해주는거 이거 안하면 메모리 계속 사용함
+	DeleteObject(hBrush);
+	DeleteObject(hFont);
+	DeleteObject(hbmp);
+	DeleteObject(hdc);
 }
 
 void GUIInitImage(cv::Mat& O_image) {

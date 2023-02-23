@@ -4,13 +4,13 @@
 #define WinName "Celeb Face Recognition"
 
 //모델이 만약 없으면 설정을 하고 넘어갈지 아니면 그냥 넘어갈지 정하는거
-#define CheckModel false
+#define CheckModel true
 
 //개발 상황에 따라 필요없는건 꺼야 할 수도 있는 것들
 #define CheckCam true //카메라의 유무를 확인 등 카메라 관련 세팅을 보거나 설정할지
-#define UseModelLoad false //모델을 가져올지 안가져올지
-#define PreSetImage true //미리 GUI를 세팅하는 것
-#define TransCelebVector false //이미지를 벡터로 바꿀지 안바꿀지 "이거 할 땐 Debug로 안됨 Release로 해야함"
+#define UseModelLoad true //모델을 가져올지 안가져올지
+#define UsePreSetImage true //미리 GUI를 세팅하는 것
+#define TransCelebVector true //이미지를 벡터로 바꿀지 안바꿀지 "이거 할 땐 Debug로 안됨 Release로 해야함"
 #define UseOpenCVGUI true //GUI 관련, 제일 메인이 될 것
 
 //#define ButtonTest true //버튼 테스트좀 해볼려는거
@@ -33,6 +33,7 @@
 #define OriRight 2
 
 #define BackgroundColor RGBScale(0x17, 0x17, 0x17)
+#define FaceLandMarkColor cv::Scalar(0x00, 0x00, 0xFF)
 
 //-----모델을 사용하기 위한 필수 명령어 들-----
 template <template <int, template<typename>class, int, typename> class block, int n, template<typename>class bn, typename subnet>
