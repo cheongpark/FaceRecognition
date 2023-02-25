@@ -7,25 +7,23 @@
 int main(int argv, char* args[]) {
 	//std::cout << argv << std::endl << args[0] << std::endl << args[1]; //파라미터 테스트
 
-	dlib::frontal_face_detector detector = dlib::get_frontal_face_detector(); //사진에서 얼굴 갯수 찾아주는거임
-	dlib::shape_predictor M_sp, M_fastsp; //얼굴에 점을 찍어서 얼굴 부분을 확인하는거
-	anet_type M_resnet; //얼굴 이미지를 넣으면 128개의 벡터 값으로 바꿔주는 모델
-
 	std::vector<dlib::matrix<dlib::rgb_pixel>> I_celeb_faces; //연예인 원본 이미지
 	std::vector<dlib::matrix<dlib::rgb_pixel>> I_celeb_faces_chip; //연예인 얼굴 이미지
 	std::vector<std::string> S_celeb_names; //연예인 이름
 
-	std::vector<dlib::matrix<float, 0, 1>> celeb_face_128_vector; //128-D 의 벡터 값들
+	std::vector<dlib::matrix<float, 0, 1>> celeb_faces_128_vector; //128-D 의 벡터 값들
 
 	cv::Mat frame(GUIHeight, GUIWidth, CV_8UC3); //미리 정한 가로 세로 대로 frame 만드는거
 	cv::Mat preSetImage(GUIHeight, GUIWidth, CV_8UC3); //고정 GUI를 저장하는 곳
+	cv::Mat I_WebCamFrame; //웹캠에서 이미지 가져온거 저장하는거
+	cv::Mat I_captureImg; //캡쳐된 이미지를 저장하는 곳
+	cv::Mat I_exportImage(MakeImageHeight, MakeImageWidth, CV_8UC3, cv::Scalar(0xFF,0xFF,0xFF)); //내보낼 이미지를 저장하는 곳
+	cv::Mat logo; //세명컴고 로고가 저장되어있는 변수
 
 	bool useFaceLandMark = true; //메인 웹캠뷰 쪽에서 얼굴을 인식해서 빨간 상자를 띄어주는걸 할지 말지
 	
 	cv::VideoCapture WebCam;
 	int CamCount = 0; //카메라 갯수 
-	int WebCamWidth = 0; //웹캠 가로
-	int WebCamHeight = 0; //웹캠 세로
 
 	cv::namedWindow(WinName); //윈도우 이름을 지정하는 것 같은데 확실하게는 모르지만 setMouseCallback을 쓸려면 써야함
 
@@ -110,8 +108,8 @@ int main(int argv, char* args[]) {
 		bool alive_SpModel = false, alive_FastSpModel = false, alive_ResNetModel = false;
 
 		//ResNet 모델부터 불러옴 제일 중요하기 때문에 없으면 정지
-		if (modelisAlive(ResNetPath)) alive_ResNetModel = true;
-		else if (CheckModel) useSearchModel(ResNetPath, alive_ResNetModel);
+		if (Model::modelisAlive(ResNetPath)) alive_ResNetModel = true;
+		else if (CheckModel) Model::useSearchModel(ResNetPath, alive_ResNetModel);
 		else {
 			setColor();
 			std::cout << ResNetPath;
@@ -122,10 +120,10 @@ int main(int argv, char* args[]) {
 
 		//빠른 모델이 없거나 느린 모델이 없으면 작동 방식
 		//모델이 모두 있는지 없는지 확인 후 판단 하는 방식으로
-		if (modelisAlive(SpPath)) alive_SpModel = true;
-		else if (CheckModel) useSearchModel(SpPath, alive_SpModel);
-		if (modelisAlive(FastSpPath)) alive_FastSpModel = true;
-		else if (CheckModel) useSearchModel(FastSpPath, alive_FastSpModel);
+		if (Model::modelisAlive(SpPath)) alive_SpModel = true;
+		else if (CheckModel) Model::useSearchModel(SpPath, alive_SpModel);
+		if (Model::modelisAlive(FastSpPath)) alive_FastSpModel = true;
+		else if (CheckModel) Model::useSearchModel(FastSpPath, alive_FastSpModel);
 
 		std::cout << std::endl;
 
@@ -149,8 +147,8 @@ int main(int argv, char* args[]) {
 
 			std::cout << "그렇기 때문에 속도가 느린 것으로 모두 적용합니다." << std::endl;
 
-			dlib::deserialize(SpPath) >> M_sp;
-			dlib::deserialize(SpPath) >> M_fastsp;
+			dlib::deserialize(SpPath) >> Model::M_sp;
+			dlib::deserialize(SpPath) >> Model::M_fastsp;
 		}
 		if (!alive_SpModel && alive_FastSpModel) {
 			setColor();
@@ -164,16 +162,84 @@ int main(int argv, char* args[]) {
 			std::cout << "그렇기 때문에 속도가 빠른 것으로 모두 적용합니다. 다만 정확도가 낮아질 수 있습니다." << std::endl;
 			setColor();
 
-			dlib::deserialize(FastSpPath) >> M_sp;
-			dlib::deserialize(FastSpPath) >> M_fastsp;
+			dlib::deserialize(FastSpPath) >> Model::M_sp;
+			dlib::deserialize(FastSpPath) >> Model::M_fastsp;
 		}
 
 		if (alive_SpModel && alive_FastSpModel) {
-			applyModel(SpPath, M_sp);
-			applyModel(FastSpPath, M_fastsp);
+			Model::applyModel(SpPath, Model::M_sp);
+			Model::applyModel(FastSpPath, Model::M_fastsp);
 		}
-		applyModel(ResNetPath, M_resnet);
+		Model::applyModel(ResNetPath, Model::M_resnet);
 	}
+
+	//이미지를 만드는걸 테스트 하는 거 이걸 이제 함수로 만들어서 연결하면 됨
+	if(true) {
+		//로고 이미지가 있는지 확인하고 있으면 가져오는 것
+		if (ImageisAlive(logoPath))
+			logo = cv::imread(logoPath);
+		
+		//테스트를 위한 이미지들을 세팅
+		cv::Mat I_myTestImage, I_celebTestImage;
+		I_myTestImage = cv::imread("./CelebrityImg/강태현.jpeg");
+		I_celebTestImage = cv::imread("./CelebrityImg/개리.jpg");
+
+		dlib::cv_image<dlib::bgr_pixel> I_celebDlibImage(I_celebTestImage), I_camDlibImage(I_myTestImage);
+
+		//이미지 제작
+		dlib::matrix<dlib::bgr_pixel> celeb_face_chip, cam_face_chip; //얼굴쪽 사진만 저장하기 위한 변수
+		dlib::extract_image_chip(I_celebDlibImage, dlib::get_face_chip_details(Model::M_sp(I_celebDlibImage, Model::detector(I_celebDlibImage)[0]), 150, 0.6).rect, celeb_face_chip); //얼굴쪽 부분 사진만 따는 함수
+		dlib::extract_image_chip(I_camDlibImage, dlib::get_face_chip_details(Model::M_sp(I_camDlibImage, Model::detector(I_camDlibImage)[0]), 150, 0.6).rect, cam_face_chip); //얼굴쪽 부분 사진만 따는 함수
+
+		cv::Mat cv_celeb_face_chip = dlib::toMat(celeb_face_chip); //openCV의 Mat로 변경하는 거
+		cv::Mat cv_cam_face_chip = dlib::toMat(cam_face_chip); //openCV의 Mat로 변경하는 거
+
+		CPputImage(logo, I_exportImage, cv::Rect(0, 0, 535, 147)); //로고 집어넣는거
+		CPputImage(cv_celeb_face_chip, I_exportImage, cv::Rect(MakeImageWidth / 2, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2)); //출력할 이미지에서 크게 오른쪽에 이미지 넣은거
+		CPputImage(cv_cam_face_chip, I_exportImage, cv::Rect(0, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2)); //왼쪽꺼
+
+		if (MakeImageUseOverlay) {
+			//얼굴 이미지에서 작게 어느 위치에 얼굴이 있는지 표시하는거
+			//어차피 위에서 이미지를 이미 삽입했으므로
+			//해당 이미지에 사각형을 치고 바로 삽입할 위치에 삽입하는 방식으로
+
+			drawFaceRectangle(cv_celeb_face_chip, cv_celeb_face_chip, Model::detector(celeb_face_chip)[0], MakeImageOverlayColor, true); //사각형 씌우는거
+			drawFaceRectangle(cv_cam_face_chip, cv_cam_face_chip, Model::detector(cam_face_chip)[0], MakeImageOverlayColor, true); //사각형 씌우는거
+		
+			CPputImage(cv_celeb_face_chip, I_exportImage, cv::Rect(MakeImageWidth - MakeImageOverlaySize, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize)); //아래 작은 이미지에 배치하는거
+			CPputImage(cv_cam_face_chip, I_exportImage, cv::Rect(0, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize)); //아래 작은 이미지에 배치하는거
+
+			cv::rectangle(I_exportImage, cv::Rect(0, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 작은거
+			cv::rectangle(I_exportImage, cv::Rect(MakeImageWidth - MakeImageOverlaySize, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 작은거
+		}
+		cv::rectangle(I_exportImage, cv::Rect(MakeImageWidth / 2, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 큰거
+		cv::rectangle(I_exportImage, cv::Rect(0, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 큰거
+
+		//현재 시간 측정
+		std::chrono::system_clock::time_point nowCaptureDate = std::chrono::system_clock::now(); //현재 시간 구하기
+		std::time_t nowCaptureDate_c = std::chrono::system_clock::to_time_t(nowCaptureDate);
+		std::tm nowCaptureDate_tm = {};
+		localtime_s(&nowCaptureDate_tm, &nowCaptureDate_c); //시간으로 변경하는거
+
+		char nowCaptureDateStr[30];
+		sprintf_s(nowCaptureDateStr, "%04d-%02d-%02d %s %02d:%02d:%02d",
+			nowCaptureDate_tm.tm_year + 1900, nowCaptureDate_tm.tm_mon + 1, nowCaptureDate_tm.tm_mday,
+			nowCaptureDate_tm.tm_hour < 12 ? "오전" : "오후",
+			nowCaptureDate_tm.tm_hour % 12 == 0 ? 12 : nowCaptureDate_tm.tm_hour % 12,
+			nowCaptureDate_tm.tm_min, nowCaptureDate_tm.tm_sec); //시간을 년-월-일 오전|오후 시:분:초 로 나타나게 하는 거 ChatGPT가 짜줌
+
+		char celebCompare[20];
+		sprintf_s(celebCompare, "%.1f%%", 87.5/*(1 - faceDistance.distance) * 100*/);
+		CPputText(I_exportImage, celebCompare, cvPoint(MakeImageWidth, 95), 2, "맑은 고딕", FW_BOLD, 6, RGBScale(0, 0, 0), RGBScale(255, 255, 255)); //한글로 되게 바꿔야함 (완료)
+		CPputText(I_exportImage, nowCaptureDateStr, cvPoint(MakeImageWidth, 0), 2, "맑은 고딕", FW_DEMIBOLD, 4, RGBScale(255, 0, 0), RGBScale(255, 255, 255));
+
+		CPputText(I_exportImage, "나", cvPoint(MakeImageWidth / 4, 745), 1, "맑은 고딕", FW_BOLD, 6, RGBScale(0, 0, 0), RGBScale(255, 255, 255)); //CanvasWidth / 4 첫번째 사진의 중간
+		CPputText(I_exportImage, "개리", cvPoint(MakeImageWidth / 4 * 3, 745), 1, "맑은 고딕", FW_BOLD, 6, RGBScale(0, 0, 0), RGBScale(255, 255, 255)); //CanvasWidth / 4 * 3 는 2번째 사진의 중간을 가르키기 위해
+
+		cv::imshow("TestExportImg", I_exportImage);
+		cv::waitKey();
+	}
+
 	if (UsePreSetImage) {
 		//사전에 GUI를 미리 이미지로 만들어서 함 이걸로 이미지 가져올 때 미리 보여주는 식으로
 		//속도를 위해 고정 위치인 UI는 다른 곳에 미리 저장을 하고 업데이트 해야할 때 마다 저장한걸 끼워넣기
@@ -198,7 +264,6 @@ int main(int argv, char* args[]) {
 	}
 	if (TransCelebVector) {
 		//연예인 이미지를 벡터화 하는 것
-
 		std::cout << std::endl;
 
 		//폴더에 있는 이미지 부터 확인
@@ -212,16 +277,16 @@ int main(int argv, char* args[]) {
 
 			dlib::load_image(I_celeb_img, celeb_path.string());
 			
-			if (detector(I_celeb_img).size() == 1) { //사진에서 얼굴이 1개 감지되면
+			if (Model::detector(I_celeb_img).size() == 1) { //사진에서 얼굴이 1개 감지되면
 				setColor(COLOR::GREEN);
 				std::cout << celeb_path << " 사진을 가져왔습니다.";
 				setColor(COLOR::WHITE);
 				std::cout << " 설정 된 연예인은 \"" << getFileName(celeb_path) << "\" 입니다." << std::endl;
 
-				auto celeb_face = detector(I_celeb_img); //얼굴의 위치를 추출하기 위한 변수임
+				auto celeb_face = Model::detector(I_celeb_img); //얼굴의 위치를 추출하기 위한 변수임
 
 				dlib::matrix<dlib::rgb_pixel> I_face_chip; //사진에서 얼굴 부분만 추출한 사진을 가지고 있는 변수
-				dlib::extract_image_chip(I_celeb_img, dlib::get_face_chip_details(M_sp(I_celeb_img, celeb_face[0]), 150, 0.25), I_face_chip); //얼굴 부분만 추출해주는 명령어
+				dlib::extract_image_chip(I_celeb_img, dlib::get_face_chip_details(Model::M_sp(I_celeb_img, celeb_face[0]), 150, 0.25), I_face_chip); //얼굴 부분만 추출해주는 명령어
 
 				if (LoadImageView) {
 					//PI_showCelebImg.set_image(I_face_chip);
@@ -269,7 +334,7 @@ int main(int argv, char* args[]) {
 			}
 			else { //사진에서 얼굴이 여러개 감지되거나 감지 되지 않았을 때
 				setColor(COLOR::RED);
-				std::cout << celeb_path << " 경로의 사진에서 " << detector(I_celeb_img).size() << "명의 얼굴이 발견 되었습니다. 1명만 있도록 맞춰주세요." << std::endl;
+				std::cout << celeb_path << " 경로의 사진에서 " << Model::detector(I_celeb_img).size() << "명의 얼굴이 발견 되었습니다. 1명만 있도록 맞춰주세요." << std::endl;
 				setColor(COLOR::GREEN);
 			}
 		}
@@ -283,7 +348,7 @@ int main(int argv, char* args[]) {
 
 		setColor(COLOR::YELLOW);
 		std::cout << std::endl << "128개의 벡터 값으로 변환 중입니다." << std::endl;
-		celeb_face_128_vector = M_resnet(I_celeb_faces_chip);
+		celeb_faces_128_vector = Model::M_resnet(I_celeb_faces_chip);
 
 		setColor(COLOR::GREEN);
 		std::cout << "완료" << std::endl << std::endl;
@@ -303,8 +368,15 @@ int main(int argv, char* args[]) {
 		int pre_camera_track_val = -1; //카메라 설정 바의 바뀌기 이전 값 (-1은 값 범위에서 벗어나게 해야지 되서)
 		cv::createTrackbar("Camera", WinName, &camera_track_val, CamCount - 1); //카메라 설정 바 만드는거
 
-		cv::Mat WebCamFrame; //웹캠에서 이미지 가져온거 저장하는거
 		while (true) {
+			if (UseGetCalTime) {
+				end_time = std::chrono::system_clock::now();
+				get_cal_time_mill = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+				start_time = std::chrono::system_clock::now();
+				
+				std::cout << get_cal_time_mill.count() << std::endl;
+			}
+
 			preSetImage.copyTo(frame); //미리 준비된 이미지를 frame에 넣는거 frame은 표시할꺼 속도를 빠르게 하기위해서 미리 만든 걸 넣는거
 			
 			//카메라를 읽을 수 있는지 없는지, 만약 읽을 수 없으면 카메라를 변경함
@@ -315,34 +387,91 @@ int main(int argv, char* args[]) {
 				setColor(COLOR::GREEN);
 				std::cout << camera_track_val << " 카메라로 변경했습니다." << std::endl;
 				setColor();
-
-				WebCamWidth = static_cast<int>(WebCam.get(cv::CAP_PROP_FRAME_WIDTH)); //웹캠의 가로 길이를 가져오는 것
-				WebCamHeight = static_cast<int>(WebCam.get(cv::CAP_PROP_FRAME_HEIGHT)); //웹캠의 세로 길이를 가져오는 것
 			}
 			
-			if (WebCam.read(WebCamFrame)) { //웹캠에서 이미지를 읽을 수 있을 때
-				if (WebCamWidth >= WebCamHeight) //웹캠이 정사각형이거나 가로가 더 길때
-					WebCamFrame = WebCamFrame(cv::Range(0, WebCamHeight), cv::Range((WebCamWidth - WebCamHeight) / 2, (WebCamWidth - WebCamHeight) / 2 + WebCamHeight));
-				else //세로가 더 길때
-					WebCamFrame = WebCamFrame(cv::Range((WebCamHeight - WebCamWidth) / 2, (WebCamHeight - WebCamWidth) / 2 + WebCamWidth), cv::Range(0, WebCamWidth));
+			if (WebCam.read(I_WebCamFrame)) { //웹캠에서 이미지를 읽을 수 있을 때
+				isUseCapture = true; //캡쳐가 되고 있음
+
+				//웹캠의 가로 세로 중 더 긴 것을 기준으로 정해서 사진을 잘라 정사각형으로 만들어 주는 것
+				whCompareSquareCut(I_WebCamFrame);
 
 				//웹캠에서 얼굴을 찾아서 사각형으로 표시해주기
-				dlib::cv_image<dlib::bgr_pixel> cimg(WebCamFrame); //얼굴을 찾기 위해 Dlib의 이미지로 변경해주는거 매트릭스 형태임
-				auto faces = detector(cimg); //매트릭스 이미지에서 얼굴들을 찾아서 faces로 저장하는 것
+				dlib::cv_image<dlib::bgr_pixel> I_calRecImg(I_WebCamFrame); //얼굴을 찾기 위해 Dlib의 이미지로 변경해주는거 매트릭스 형태임 Calculate Rectangle Image임
+				auto faces = Model::detector(I_calRecImg); //매트릭스 이미지에서 얼굴들을 찾아서 faces로 저장하는 것
 				int facesCount = faces.size(); //얼굴 개수를 저따가 넣는거
 
-				char facesCountText[30]; //얼굴 몇개 있는지 텍스트 넣을 곳
-				sprintf_s(facesCountText, "얼굴 %d명 감지 되었습니다.", facesCount);
-				CPputText(frame, facesCountText, cv::Point(frame.cols - ((frame.cols - frame.rows) / 2), 110), OriCenter, "맑은 고딕", FW_BOLD, 3, (facesCount != 1 ? RGBScale(0xDA, 0x00, 0x37) : RGBScale(0xED, 0xED, 0xED)), BackgroundColor); //frame에 얼굴이 몇개 있는지 텍스트로 띄어주는 거 중간에 조건문은 1명이 아니면 빨간색으로 글자 띄우는거
+				//얼굴 횟수 텍스트 표시
+				char S_facesCount[30]; //얼굴 몇개 있는지 텍스트 넣을 곳
+				sprintf_s(S_facesCount, "얼굴 %d명 감지 되었습니다.", facesCount);
+				CPputText(frame, S_facesCount, cv::Point(frame.cols - ((frame.cols - frame.rows) / 2), 110), OriCenter, "맑은 고딕", FW_BOLD, 3, (facesCount != 1 ? RGBScale(0xDA, 0x00, 0x37) : RGBScale(0xED, 0xED, 0xED)), BackgroundColor); //frame에 얼굴이 몇개 있는지 텍스트로 띄어주는 거 중간에 조건문은 1명이 아니면 빨간색으로 글자 띄우는거
 
-				if (facesCount == 1) {
-					dlib::chip_details faceChip = dlib::get_face_chip_details(M_fastsp(cimg, faces[0]), CamHeight, 0.2); //찾은 얼굴의 위치를 저장하는 것 0.2는 사각형과 얼굴 내부 간격 같은거임
-					cv::rectangle(WebCamFrame, cv::Rect(faceChip.rect.left(), faceChip.rect.top(), faceChip.rect.width(), faceChip.rect.height()), FaceLandMarkColor, 1, 4, 0); //내가 지정한 색으로 얼굴에 아까 구한 Rect 값으로 사각형을 그리는거임
+				if (facesCount == 1)
+					drawFaceRectangle(I_calRecImg, I_WebCamFrame, faces[0], FaceLandMarkColor);
+
+				//메인 웹캠 뷰 쪽에 웹캠 사진 넣는거
+				GUICon::putWebcamView(I_WebCamFrame, frame);
+
+				//캡쳐 버튼이 눌리면 사진을 캡쳐하고 얼굴을 비교함
+				if (useCapture) {
+					capture_start_now = std::chrono::system_clock::now(); //현재의 시간을 저장
+					get_capture_start_mill = std::chrono::duration_cast<std::chrono::milliseconds>(capture_start_now - capture_start); //현재 시간에서 캡쳐 시작 시간을 빼서 캡쳐 후의 시간을 측정해서 밀리세컨드로 저장
+
+					if (get_capture_start_mill.count() >= 3000) { //캡쳐 후의 시간이 3초가 지나면 
+						//캡쳐 버튼 눌르고 3초가 지났을 때
+						if (facesCount == 1) { //웹캠에 얼굴이 1개만 있을 때
+							std::cout << "캡쳐함" << std::endl;
+							//GUICon::putWebcamViewText(frame, "CAPTURE!", RGBScale(0xDA, 0x00, 0x37));
+
+							//현재 이미지 캡쳐
+							WebCam.read(I_captureImg);
+							whCompareSquareCut(I_captureImg);
+
+							//cv::imshow("Test2", captureImg); //테스트용 이미지 표시
+
+							//얼굴들을 계산해주는 곳
+							setColor(COLOR::YELLOW);
+							std::cout << "계산중" << std::endl;
+							setColor();
+							GUICon::putWebcamViewText(frame, "Cal..", RGBScale(0xDA, 0x00, 0x37));
+
+							//계산을 따로 해주는 함수를 제작하고 이미지로 만드는걸 제작해서
+							//계산을 바로 하고 이미지를 만들고 변수에 저장하고 있다가 
+							//PREVIEW 버튼을 눌르면 미리 보여주는 창을 띄우고 EXPORT눌르면 내보내기가 되게
+
+							std::vector<FaceDistance>faces_distance = compareFacesImage(I_captureImg, celeb_faces_128_vector); //이미지와 연예인 벡터 값을 넣어서 거리를 비교해서 정렬된 값을 가져와 저장하는 것
+
+							//GUI에 순위를 표시해주는 것
+							//예시들임
+							std::cout << S_celeb_names[faces_distance[0].faceNum] << std::endl;
+							std::cout << S_celeb_names[faces_distance[1].faceNum] << std::endl;
+							std::cout << S_celeb_names[faces_distance[2].faceNum] << std::endl;
+							std::cout << S_celeb_names[faces_distance[3].faceNum] << std::endl;
+
+							useCapture = false; //모든 작업이 끝났기 때문에 캡쳐를 종료
+						}
+						else {
+							setColor(COLOR::RED);
+							std::cout << "웹캠에 얼굴이 감지되지 않아 캡쳐를 종료합니다." << std::endl;
+							setColor();
+
+							useCapture = false; //캡쳐할 때 얼굴이 감지 되지 않아서 캡쳐를 종료
+						}
+					}
+					else { //3초가 지나지 않아서 웹캠 뷰로 3, 2, 1를 띄워주는 곳
+						//3, 2, 1를 텍스트로 초마다 표시하게 하는 곳
+						//std::cout << 3 - (get_capture_start_mill.count() / 1000) << std::endl; 
+						cv::String capture_timer(std::to_string(3 - (get_capture_start_mill.count() / 1000))); //3초 타이머 구현, 3 2 1를 출력함
+						GUICon::putWebcamViewText(frame, capture_timer);
+					}
 				}
 
-				GUICon::putWebcamView(WebCamFrame, frame); //메인 웹캠 뷰 쪽에 웹캠 사진 넣는거
+				//테스트임
+				//GUICon::putWebcamViewText(frame, "안녕");
 			}
 			else { //웹캠에서 이미지를 읽을 수 없을 때
+				isUseCapture = false; //캡쳐가 되지 않고 있음
+				useCapture = false; //이거 안하면 캡쳐 되고 있을 때 이미지를 읽을 수 없다가 다시 이미지를 읽으면 갑자기 캡쳐함
+
 				setColor(COLOR::RED);
 				std::cout << "웹캠에서 이미지를 읽을 수 없습니다." << std::endl;
 				setColor();
@@ -512,7 +641,7 @@ void GUIInitImage(cv::Mat& O_image) {
 	CPputText(O_image, "EXPORT", cv::Point(GUICon::Var::BR_export.x + (GUICon::Var::BR_export.width / 2), GUICon::Var::BR_export.y + 13), 1, "맑은 고딕", FW_BOLD, 3, RGBScale(0xED, 0xED, 0xED), BackgroundColor);
 }
 
-bool modelisAlive(std::string& path) {
+bool Model::modelisAlive(std::string& path) {
 	setColor();
 	std::cout << path;
 
@@ -528,7 +657,7 @@ bool modelisAlive(std::string& path) {
 	}
 }
 
-void useSearchModel(std::string& path, bool& alive_model) {
+void Model::useSearchModel(std::string& path, bool& alive_model) {
 	char checkRight;
 
 	setColor();
@@ -543,7 +672,7 @@ void useSearchModel(std::string& path, bool& alive_model) {
 	}
 }
 
-void applyModel(std::string& path, dlib::shape_predictor& model) {
+void Model::applyModel(std::string& path, dlib::shape_predictor& model) {
 	setColor();
 	std::cout << path;
 	setColor(COLOR::BLUE);
@@ -551,12 +680,42 @@ void applyModel(std::string& path, dlib::shape_predictor& model) {
 	dlib::deserialize(path) >> model;
 }
 
-void applyModel(std::string& path, anet_type& model) {
+void Model::applyModel(std::string& path, anet_type& model) {
 	setColor();
 	std::cout << path;
 	setColor(COLOR::BLUE);
 	std::cout << " 모델을 적용합니다." << std::endl;
 	dlib::deserialize(path) >> model;
+}
+
+void drawFaceRectangle(dlib::cv_image<dlib::bgr_pixel> I_image, cv::Mat& O_image, dlib::rectangle face, cv::Scalar color, bool useFast) {
+	dlib::chip_details faceChip; //얼굴에 위치에 대한 값이 저장되있는 변수
+
+	if (useFast) //5개의 점을 찍어서 찾는 것 (빠름, 정확도 낮음)
+		faceChip = dlib::get_face_chip_details(Model::M_fastsp(I_image, face), 150, 0.2); //찾은 얼굴의 위치를 저장하는 것 0.2는 사각형과 얼굴 내부 간격 같은거임
+	else //68개의 점을 찍어서 찾는 것 (느림, 정확도 높음)
+		faceChip = dlib::get_face_chip_details(Model::M_sp(I_image, face), 150, 0.2); //찾은 얼굴의 위치를 저장하는 것 0.2는 사각형과 얼굴 내부 간격 같은거임
+
+	cv::rectangle(O_image, cv::Rect(faceChip.rect.left(), faceChip.rect.top(), faceChip.rect.width(), faceChip.rect.height()), color, 2, 4, 0); //내가 지정한 색으로 얼굴에 아까 구한 Rect 값으로 사각형을 그리는거임
+}
+
+void drawFaceRectangle(cv::Mat& I_image, cv::Mat& O_image, dlib::rectangle face, cv::Scalar color, bool useFast) {
+	dlib::chip_details faceChip; //얼굴에 위치에 대한 값이 저장되있는 변수
+	dlib::cv_image<dlib::bgr_pixel> faceImage(I_image);
+
+	if (useFast) //5개의 점을 찍어서 찾는 것 (빠름, 정확도 낮음)
+		faceChip = dlib::get_face_chip_details(Model::M_fastsp(faceImage, face), 150, 0.2); //찾은 얼굴의 위치를 저장하는 것 0.2는 사각형과 얼굴 내부 간격 같은거임
+	else //68개의 점을 찍어서 찾는 것 (느림, 정확도 높음)
+		faceChip = dlib::get_face_chip_details(Model::M_sp(faceImage, face), 150, 0.2); //찾은 얼굴의 위치를 저장하는 것 0.2는 사각형과 얼굴 내부 간격 같은거임
+
+	cv::rectangle(O_image, cv::Rect(faceChip.rect.left(), faceChip.rect.top(), faceChip.rect.width(), faceChip.rect.height()), color, 2, 4, 0); //내가 지정한 색으로 얼굴에 아까 구한 Rect 값으로 사각형을 그리는거임
+}
+
+void whCompareSquareCut(cv::Mat& I_image) {
+	if (I_image.cols >= I_image.rows) //이미지가 정사각형이거나 가로가 더 길때
+		I_image = I_image(cv::Range(0, I_image.rows), cv::Range((I_image.cols - I_image.rows) / 2, (I_image.cols - I_image.rows) / 2 + I_image.rows));
+	else //세로가 더 길때
+		I_image = I_image(cv::Range((I_image.rows - I_image.cols) / 2, (I_image.rows - I_image.cols) / 2 + I_image.cols), cv::Range(0, I_image.cols));
 }
 
 std::vector<std::filesystem::path> loadImagePath(std::string& folder) {
@@ -573,6 +732,48 @@ std::vector<std::filesystem::path> loadImagePath(std::string& folder) {
 
 std::string getFileName(std::filesystem::path& path) {
 	return path.filename().string().substr(0, path.filename().string().find('.'));
+}
+
+std::vector<FaceDistance> compareFacesImage(cv::Mat& faceImg, std::vector<dlib::matrix<float, 0, 1>> faces_vector) {
+	dlib::cv_image<dlib::bgr_pixel> I_cam_face(faceImg); //dlib로 비교하기 때문에 openCV에서 캡쳐한 이미지를 dlib 이미지로 변경
+	std::vector<dlib::rectangle> compareFace = Model::detector(I_cam_face); //추출한 이미지에서 얼굴을 찾아서 얼굴 위치 저장
+
+	dlib::matrix<dlib::rgb_pixel> I_cam_faces_chip; //얼굴 부분만 추출한 이미지를 저장하는 변수
+	dlib::extract_image_chip(I_cam_face, dlib::get_face_chip_details(Model::M_sp(I_cam_face, compareFace[0]), 150, 0.25), I_cam_faces_chip); //이미지에서 얼굴 부분만 추출해서 저장 하는 함수 느려도 되는 작업이라 정교 모델로
+
+	dlib::matrix<float, 0, 1> cam_face_128_vector = Model::M_resnet(I_cam_faces_chip); //얼굴의 이미지를 벡터로 변환
+
+	std::vector<FaceDistance> faces_distance; //연예인과의 거리 순위들을 체크하기 위해 벡터를 사용
+	for (int i = 0; i < faces_vector.size(); i++)
+		faces_distance.push_back({ i, dlib::length(cam_face_128_vector - faces_vector[i]) }); //i는 몇번의 얼굴인지 다음껀 연예인과 캠 얼굴의 거리를 저장
+
+	std::sort(faces_distance.begin(), faces_distance.end(), face_cmp); //비교된 얼굴들의 거리를 오름차순으로 정렬 거리가 가까울 수록 닮았기 때문에
+	
+	return faces_distance;
+}
+
+bool face_cmp(FaceDistance a, FaceDistance b) {
+	return a.faceDistance < b.faceDistance;
+}
+
+void makeCompareImage(cv::Mat& I_camImage, cv::Mat& I_celebImage, FaceDistance& compareDistance, cv::Mat& logo) {
+
+}
+
+bool ImageisAlive(std::string& path) {
+	setColor();
+	std::cout << path;
+
+	if (_access(path.c_str(), 0) != -1) {
+		setColor(COLOR::GREEN);
+		std::cout << " 이미지를 찾았습니다." << std::endl;
+		return 1;
+	}
+	else {
+		setColor(COLOR::RED);
+		std::cout << " 이미지를 찾지 못했습니다." << std::endl;
+		return 0;
+	}
 }
 
 void setColor(short textcolor, short background) {
@@ -625,7 +826,11 @@ void GUICon::buttonsCheck(int event, int x, int y, int flags, void* userData) {
 
 		if (PtInRect(&GUICon::Var::CBR_capture, GUICon::Var::mouse)) { //1번 버튼에서 마우스가 때졌을 때
 			if (GUICon::Var::pushButtonNum == 1) { //1번 버튼이 눌린게 확실해졌을 때
-				std::cout << "1번 버튼 눌림" << std::endl;
+				if (isUseCapture) {
+					std::cout << "캡쳐 버튼 눌림" << std::endl;
+					useCapture = true;
+					capture_start = std::chrono::system_clock::now();
+				}
 			}
 		}
 		else if (PtInRect(&GUICon::Var::CBR_preview, GUICon::Var::mouse)) { //2번 버튼에서 마우스가 때졌을 때
@@ -652,4 +857,8 @@ void GUICon::cvRect2RECT(cv::Rect& I_rect, RECT& O_rect) {
 	O_rect.top = I_rect.y;
 	O_rect.right = I_rect.x + I_rect.width;
 	O_rect.bottom = I_rect.y + I_rect.height;
+}
+
+void GUICon::putWebcamViewText(cv::Mat& O_image, cv::String text, RGBScale color) {
+	CPputText(O_image, text, cv::Point(CamWidth / 2, CamHeight / 2 - 70), OriCenter, "맑은 고딕", FW_BOLD, 15, color, RGBScale(0x00, 0x00, 0x00));
 }
