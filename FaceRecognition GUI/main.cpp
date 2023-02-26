@@ -17,8 +17,11 @@ int main(int argv, char* args[]) {
 	cv::Mat preSetImage(GUIHeight, GUIWidth, CV_8UC3); //고정 GUI를 저장하는 곳
 	cv::Mat I_WebCamFrame; //웹캠에서 이미지 가져온거 저장하는거
 	cv::Mat I_captureImg; //캡쳐된 이미지를 저장하는 곳
-	cv::Mat I_exportImage(MakeImageHeight, MakeImageWidth, CV_8UC3, cv::Scalar(0xFF,0xFF,0xFF)); //내보낼 이미지를 저장하는 곳
-	cv::Mat logo; //세명컴고 로고가 저장되어있는 변수
+	cv::Mat I_logoImage; //세명컴고 로고가 저장되어있는 변수
+	cv::Mat I_previewRankCelebImage(100, 100, CV_8UC3); //GUI 에서 프리뷰 나오는 곳에 어떤 얼굴이 제일 닮았는지 표시하기 위해
+	
+	//처음에는 이미지가 없기 때문에 검은색으로 처음에 채워주기 위해 하는거
+	I_previewRankCelebImage = cv::Scalar(0x00, 0x00, 0x00);
 
 	bool useFaceLandMark = true; //메인 웹캠뷰 쪽에서 얼굴을 인식해서 빨간 상자를 띄어주는걸 할지 말지
 	
@@ -103,7 +106,7 @@ int main(int argv, char* args[]) {
 
 		//이렇게 해서 카메라 번호를 확인하고 OpenCV 메뉴에서 카메라 번호 설정을 띄우게 하는 것
 	}
-	if (UseModelLoad) {
+	if (UseModelAndLogoLoad) {
 		//모델 로드
 		bool alive_SpModel = false, alive_FastSpModel = false, alive_ResNetModel = false;
 
@@ -171,75 +174,18 @@ int main(int argv, char* args[]) {
 			Model::applyModel(FastSpPath, Model::M_fastsp);
 		}
 		Model::applyModel(ResNetPath, Model::M_resnet);
-	}
-
-	//이미지를 만드는걸 테스트 하는 거 이걸 이제 함수로 만들어서 연결하면 됨
-	if(true) {
+	
 		//로고 이미지가 있는지 확인하고 있으면 가져오는 것
 		if (ImageisAlive(logoPath))
-			logo = cv::imread(logoPath);
-		
-		//테스트를 위한 이미지들을 세팅
-		cv::Mat I_myTestImage, I_celebTestImage;
-		I_myTestImage = cv::imread("./CelebrityImg/강태현.jpeg");
-		I_celebTestImage = cv::imread("./CelebrityImg/개리.jpg");
-
-		dlib::cv_image<dlib::bgr_pixel> I_celebDlibImage(I_celebTestImage), I_camDlibImage(I_myTestImage);
-
-		//이미지 제작
-		dlib::matrix<dlib::bgr_pixel> celeb_face_chip, cam_face_chip; //얼굴쪽 사진만 저장하기 위한 변수
-		dlib::extract_image_chip(I_celebDlibImage, dlib::get_face_chip_details(Model::M_sp(I_celebDlibImage, Model::detector(I_celebDlibImage)[0]), 150, 0.6).rect, celeb_face_chip); //얼굴쪽 부분 사진만 따는 함수
-		dlib::extract_image_chip(I_camDlibImage, dlib::get_face_chip_details(Model::M_sp(I_camDlibImage, Model::detector(I_camDlibImage)[0]), 150, 0.6).rect, cam_face_chip); //얼굴쪽 부분 사진만 따는 함수
-
-		cv::Mat cv_celeb_face_chip = dlib::toMat(celeb_face_chip); //openCV의 Mat로 변경하는 거
-		cv::Mat cv_cam_face_chip = dlib::toMat(cam_face_chip); //openCV의 Mat로 변경하는 거
-
-		CPputImage(logo, I_exportImage, cv::Rect(0, 0, 535, 147)); //로고 집어넣는거
-		CPputImage(cv_celeb_face_chip, I_exportImage, cv::Rect(MakeImageWidth / 2, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2)); //출력할 이미지에서 크게 오른쪽에 이미지 넣은거
-		CPputImage(cv_cam_face_chip, I_exportImage, cv::Rect(0, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2)); //왼쪽꺼
-
-		if (MakeImageUseOverlay) {
-			//얼굴 이미지에서 작게 어느 위치에 얼굴이 있는지 표시하는거
-			//어차피 위에서 이미지를 이미 삽입했으므로
-			//해당 이미지에 사각형을 치고 바로 삽입할 위치에 삽입하는 방식으로
-
-			drawFaceRectangle(cv_celeb_face_chip, cv_celeb_face_chip, Model::detector(celeb_face_chip)[0], MakeImageOverlayColor, true); //사각형 씌우는거
-			drawFaceRectangle(cv_cam_face_chip, cv_cam_face_chip, Model::detector(cam_face_chip)[0], MakeImageOverlayColor, true); //사각형 씌우는거
-		
-			CPputImage(cv_celeb_face_chip, I_exportImage, cv::Rect(MakeImageWidth - MakeImageOverlaySize, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize)); //아래 작은 이미지에 배치하는거
-			CPputImage(cv_cam_face_chip, I_exportImage, cv::Rect(0, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize)); //아래 작은 이미지에 배치하는거
-
-			cv::rectangle(I_exportImage, cv::Rect(0, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 작은거
-			cv::rectangle(I_exportImage, cv::Rect(MakeImageWidth - MakeImageOverlaySize, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 작은거
+			I_logoImage = cv::imread(logoPath);
+		else {
+			setColor(COLOR::RED);
+			std::cout << "로고 이미지가 없어 이미지를 만들 때 로고가 없습니다." << std::endl;
+			setColor();
+			I_logoImage = cv::Mat(147, 535, CV_8UC3);
+			I_logoImage = cv::Scalar(0xFF, 0xFF, 0xFF);
 		}
-		cv::rectangle(I_exportImage, cv::Rect(MakeImageWidth / 2, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 큰거
-		cv::rectangle(I_exportImage, cv::Rect(0, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 큰거
-
-		//현재 시간 측정
-		std::chrono::system_clock::time_point nowCaptureDate = std::chrono::system_clock::now(); //현재 시간 구하기
-		std::time_t nowCaptureDate_c = std::chrono::system_clock::to_time_t(nowCaptureDate);
-		std::tm nowCaptureDate_tm = {};
-		localtime_s(&nowCaptureDate_tm, &nowCaptureDate_c); //시간으로 변경하는거
-
-		char nowCaptureDateStr[30];
-		sprintf_s(nowCaptureDateStr, "%04d-%02d-%02d %s %02d:%02d:%02d",
-			nowCaptureDate_tm.tm_year + 1900, nowCaptureDate_tm.tm_mon + 1, nowCaptureDate_tm.tm_mday,
-			nowCaptureDate_tm.tm_hour < 12 ? "오전" : "오후",
-			nowCaptureDate_tm.tm_hour % 12 == 0 ? 12 : nowCaptureDate_tm.tm_hour % 12,
-			nowCaptureDate_tm.tm_min, nowCaptureDate_tm.tm_sec); //시간을 년-월-일 오전|오후 시:분:초 로 나타나게 하는 거 ChatGPT가 짜줌
-
-		char celebCompare[20];
-		sprintf_s(celebCompare, "%.1f%%", 87.5/*(1 - faceDistance.distance) * 100*/);
-		CPputText(I_exportImage, celebCompare, cvPoint(MakeImageWidth, 95), 2, "맑은 고딕", FW_BOLD, 6, RGBScale(0, 0, 0), RGBScale(255, 255, 255)); //한글로 되게 바꿔야함 (완료)
-		CPputText(I_exportImage, nowCaptureDateStr, cvPoint(MakeImageWidth, 0), 2, "맑은 고딕", FW_DEMIBOLD, 4, RGBScale(255, 0, 0), RGBScale(255, 255, 255));
-
-		CPputText(I_exportImage, "나", cvPoint(MakeImageWidth / 4, 745), 1, "맑은 고딕", FW_BOLD, 6, RGBScale(0, 0, 0), RGBScale(255, 255, 255)); //CanvasWidth / 4 첫번째 사진의 중간
-		CPputText(I_exportImage, "개리", cvPoint(MakeImageWidth / 4 * 3, 745), 1, "맑은 고딕", FW_BOLD, 6, RGBScale(0, 0, 0), RGBScale(255, 255, 255)); //CanvasWidth / 4 * 3 는 2번째 사진의 중간을 가르키기 위해
-
-		cv::imshow("TestExportImg", I_exportImage);
-		cv::waitKey();
 	}
-
 	if (UsePreSetImage) {
 		//사전에 GUI를 미리 이미지로 만들어서 함 이걸로 이미지 가져올 때 미리 보여주는 식으로
 		//속도를 위해 고정 위치인 UI는 다른 곳에 미리 저장을 하고 업데이트 해야할 때 마다 저장한걸 끼워넣기
@@ -410,6 +356,8 @@ int main(int argv, char* args[]) {
 
 				//메인 웹캠 뷰 쪽에 웹캠 사진 넣는거
 				GUICon::putWebcamView(I_WebCamFrame, frame);
+				//프리뷰 이미지쪽에 어떤 연예인이 가장 닮았는지 표시하기 위한거
+				GUICon::putPreImageView(I_previewRankCelebImage, frame);
 
 				//캡쳐 버튼이 눌리면 사진을 캡쳐하고 얼굴을 비교함
 				if (useCapture) {
@@ -419,7 +367,7 @@ int main(int argv, char* args[]) {
 					if (get_capture_start_mill.count() >= 3000) { //캡쳐 후의 시간이 3초가 지나면 
 						//캡쳐 버튼 눌르고 3초가 지났을 때
 						if (facesCount == 1) { //웹캠에 얼굴이 1개만 있을 때
-							std::cout << "캡쳐함" << std::endl;
+							std::cout << "캡쳐를 했습니다." << std::endl;
 							//GUICon::putWebcamViewText(frame, "CAPTURE!", RGBScale(0xDA, 0x00, 0x37));
 
 							//현재 이미지 캡쳐
@@ -430,7 +378,7 @@ int main(int argv, char* args[]) {
 
 							//얼굴들을 계산해주는 곳
 							setColor(COLOR::YELLOW);
-							std::cout << "계산중" << std::endl;
+							std::cout << "계산 중입니다." << std::endl;
 							setColor();
 							GUICon::putWebcamViewText(frame, "Cal..", RGBScale(0xDA, 0x00, 0x37));
 
@@ -440,12 +388,36 @@ int main(int argv, char* args[]) {
 
 							std::vector<FaceDistance>faces_distance = compareFacesImage(I_captureImg, celeb_faces_128_vector); //이미지와 연예인 벡터 값을 넣어서 거리를 비교해서 정렬된 값을 가져와 저장하는 것
 
+							//cv::Mat I_celebImg = dlib::toMat(I_celeb_faces[faces_distance[0].faceNum]); //함수에서 쓸 수 있도록 dlib 이미지를 cv::Mat 이미지로
+							I_exportImage = makeCelebCompareImage(I_captureImg, I_celeb_faces[faces_distance[0].faceNum], I_logoImage, S_celeb_names[faces_distance[0].faceNum], faces_distance[0].faceDistance); //이미지 만들어주는 함수임
+							//어떤 얼굴이 제일 닮았는지 표시하기 위한 거
+							//이미지의 길이에 맞춰 배경 생성하고 색 넣기
+							int squareLen = (I_celeb_faces[faces_distance[0].faceNum].nc() < I_celeb_faces[faces_distance[0].faceNum].nr() ? I_celeb_faces[faces_distance[0].faceNum].nr() : I_celeb_faces[faces_distance[0].faceNum].nc());
+
+							cv::Mat originalViewImage(squareLen, squareLen, CV_8UC3);
+							originalViewImage = cv::Scalar(0xFF, 0xFF, 0xFF);
+
+							//배경 이미지 중앙에 사진 넣기
+							//사진의 세로가 가로보다 짧을 경우 squareLen의 길이에서 반을 나누고 이미지 세로의 반 만큼 빼서 좌표 구하기						
+							if (I_celeb_faces[faces_distance[0].faceNum].nr() < I_celeb_faces[faces_distance[0].faceNum].nc()) { //가로가 더 클 경우 같을 경우 비교 안하는건 위에서 이미 해서
+								int ypos = (squareLen / 2) - (I_celeb_faces[faces_distance[0].faceNum].nr() / 2); //세로가 짧을 경우 정사각형의 한 변의 길에서 이미지 세로 반을 빼서 위치 구하는 것
+								CPputImage(I_celeb_faces[faces_distance[0].faceNum], originalViewImage, cv::Rect(0, ypos, I_celeb_faces[faces_distance[0].faceNum].nc(), I_celeb_faces[faces_distance[0].faceNum].nr()));
+							}
+							else {
+								int xpos = (squareLen / 2) - (I_celeb_faces[faces_distance[0].faceNum].nc() / 2); //위와 반대
+								CPputImage(I_celeb_faces[faces_distance[0].faceNum], originalViewImage, cv::Rect(xpos, 0, I_celeb_faces[faces_distance[0].faceNum].nc(), I_celeb_faces[faces_distance[0].faceNum].nr()));
+							}
+							cv::cvtColor(originalViewImage, originalViewImage, cv::COLOR_RGB2BGR);
+							originalViewImage.copyTo(I_previewRankCelebImage);
+
 							//GUI에 순위를 표시해주는 것
-							//예시들임
-							std::cout << S_celeb_names[faces_distance[0].faceNum] << std::endl;
-							std::cout << S_celeb_names[faces_distance[1].faceNum] << std::endl;
-							std::cout << S_celeb_names[faces_distance[2].faceNum] << std::endl;
-							std::cout << S_celeb_names[faces_distance[3].faceNum] << std::endl;
+							//등수를 GUI 내에서도 표시해야함
+							setColor(COLOR::AQUA);
+							std::cout << S_celeb_names[faces_distance[0].faceNum] << dis2per(faces_distance[0].faceDistance) << std::endl;
+							std::cout << S_celeb_names[faces_distance[1].faceNum] << dis2per(faces_distance[1].faceDistance) << std::endl;
+							std::cout << S_celeb_names[faces_distance[2].faceNum] << dis2per(faces_distance[2].faceDistance) << std::endl;
+							std::cout << S_celeb_names[faces_distance[3].faceNum] << dis2per(faces_distance[3].faceDistance) << std::endl;
+							setColor();
 
 							useCapture = false; //모든 작업이 끝났기 때문에 캡쳐를 종료
 						}
@@ -489,7 +461,8 @@ int main(int argv, char* args[]) {
 	system("pause");
 }
 
-void CPputImage(cv::Mat& I_image, cv::Mat& O_image, cv::Rect pos) {
+void CPputImage(cv::Mat I_image, cv::Mat& O_image, cv::Rect pos) {
+	//CPputImage의 파라미터에서 I_image만 &를 안한 이유가 리사이즈를 하면서 원본도 같이 바껴서
 	cv::resize(I_image, I_image, cv::Size(pos.width, pos.height));
 
 	cv::Mat imageROI(O_image, pos);
@@ -692,11 +665,11 @@ void drawFaceRectangle(dlib::cv_image<dlib::bgr_pixel> I_image, cv::Mat& O_image
 	dlib::chip_details faceChip; //얼굴에 위치에 대한 값이 저장되있는 변수
 
 	if (useFast) //5개의 점을 찍어서 찾는 것 (빠름, 정확도 낮음)
-		faceChip = dlib::get_face_chip_details(Model::M_fastsp(I_image, face), 150, 0.2); //찾은 얼굴의 위치를 저장하는 것 0.2는 사각형과 얼굴 내부 간격 같은거임
+		faceChip = dlib::get_face_chip_details(Model::M_sp(I_image, face), 150, 0.2); //찾은 얼굴의 위치를 저장하는 것 0.2는 사각형과 얼굴 내부 간격 같은거임
 	else //68개의 점을 찍어서 찾는 것 (느림, 정확도 높음)
 		faceChip = dlib::get_face_chip_details(Model::M_sp(I_image, face), 150, 0.2); //찾은 얼굴의 위치를 저장하는 것 0.2는 사각형과 얼굴 내부 간격 같은거임
 
-	cv::rectangle(O_image, cv::Rect(faceChip.rect.left(), faceChip.rect.top(), faceChip.rect.width(), faceChip.rect.height()), color, 2, 4, 0); //내가 지정한 색으로 얼굴에 아까 구한 Rect 값으로 사각형을 그리는거임
+	cv::rectangle(O_image, cv::Rect(faceChip.rect.left(), faceChip.rect.top(), faceChip.rect.width(), faceChip.rect.height()), color, 1, 4, 0); //내가 지정한 색으로 얼굴에 아까 구한 Rect 값으로 사각형을 그리는거임
 }
 
 void drawFaceRectangle(cv::Mat& I_image, cv::Mat& O_image, dlib::rectangle face, cv::Scalar color, bool useFast) {
@@ -704,7 +677,7 @@ void drawFaceRectangle(cv::Mat& I_image, cv::Mat& O_image, dlib::rectangle face,
 	dlib::cv_image<dlib::bgr_pixel> faceImage(I_image);
 
 	if (useFast) //5개의 점을 찍어서 찾는 것 (빠름, 정확도 낮음)
-		faceChip = dlib::get_face_chip_details(Model::M_fastsp(faceImage, face), 150, 0.2); //찾은 얼굴의 위치를 저장하는 것 0.2는 사각형과 얼굴 내부 간격 같은거임
+		faceChip = dlib::get_face_chip_details(Model::M_sp(faceImage, face), 150, 0.2); //찾은 얼굴의 위치를 저장하는 것 0.2는 사각형과 얼굴 내부 간격 같은거임
 	else //68개의 점을 찍어서 찾는 것 (느림, 정확도 높음)
 		faceChip = dlib::get_face_chip_details(Model::M_sp(faceImage, face), 150, 0.2); //찾은 얼굴의 위치를 저장하는 것 0.2는 사각형과 얼굴 내부 간격 같은거임
 
@@ -756,8 +729,63 @@ bool face_cmp(FaceDistance a, FaceDistance b) {
 	return a.faceDistance < b.faceDistance;
 }
 
-void makeCompareImage(cv::Mat& I_camImage, cv::Mat& I_celebImage, FaceDistance& compareDistance, cv::Mat& logo) {
+cv::Mat makeCelebCompareImage(cv::Mat& I_camImage, dlib::matrix<dlib::rgb_pixel> I_celebDlibImage, cv::Mat& I_logo, cv::String celebName, float celebDistance) {
+	cv::Mat I_exportImage(MakeImageHeight, MakeImageWidth, CV_8UC3, cv::Scalar(0xFF, 0xFF, 0xFF));
+	
+	dlib::cv_image<dlib::bgr_pixel> I_camDlibImage(I_camImage);
 
+	//이미지 제작
+	dlib::matrix<dlib::bgr_pixel> cam_face_chip, celeb_face_chip; //얼굴쪽 사진만 저장하기 위한 변수
+	dlib::extract_image_chip(I_camDlibImage, dlib::get_face_chip_details(Model::M_sp(I_camDlibImage, Model::detector(I_camDlibImage)[0]), 150, 0.6).rect, cam_face_chip); //얼굴쪽 부분 사진만 따는 함수
+	dlib::extract_image_chip(I_celebDlibImage, dlib::get_face_chip_details(Model::M_sp(I_celebDlibImage, Model::detector(I_celebDlibImage)[0]), 150, 0.6).rect, celeb_face_chip); //얼굴쪽 부분 사진만 따는 함수
+
+	cv::Mat cv_cam_face_chip = dlib::toMat(cam_face_chip); //openCV의 Mat로 변경하는 거
+	cv::Mat cv_celeb_face_chip = dlib::toMat(celeb_face_chip); //openCV의 Mat로 변경하는 거
+
+	CPputImage(I_logo, I_exportImage, cv::Rect(0, 0, 535, 147)); //로고 집어넣는거
+	CPputImage(cv_cam_face_chip, I_exportImage, cv::Rect(0, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2)); //왼쪽꺼
+	CPputImage(cv_celeb_face_chip, I_exportImage, cv::Rect(MakeImageWidth / 2, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2)); //출력할 이미지에서 크게 오른쪽에 이미지 넣은거
+
+	if (MakeImageUseOverlay) {
+		//얼굴 이미지에서 작게 어느 위치에 얼굴이 있는지 표시하는거
+		//어차피 위에서 이미지를 이미 삽입했으므로
+		//해당 이미지에 사각형을 치고 바로 삽입할 위치에 삽입하는 방식으로
+
+		//리사이즈 해주는 이유는 이미지에 사각형을 보이게 하고 축소하는 과정에서 이미지의 크기가 다르면 둘다 사각형 두께가 이상해짐
+		cv::resize(cv_cam_face_chip, cv_cam_face_chip, cv::Size(MakeImageWidth / 2, MakeImageWidth / 2));
+		cv::resize(cv_celeb_face_chip, cv_celeb_face_chip, cv::Size(MakeImageWidth / 2, MakeImageWidth / 2));
+
+		//cv이미지를 변환 시키는 것도 사이즈를 맞추기 위해.. 사이즈가 중간에 틀려져서..
+		dlib::cv_image<dlib::bgr_pixel> dlib_cam_face_chip(cv_cam_face_chip);
+		dlib::cv_image<dlib::bgr_pixel> dlib_celeb_face_chip(cv_celeb_face_chip);
+
+		drawFaceRectangle(cv_cam_face_chip, cv_cam_face_chip, Model::detector(dlib_cam_face_chip)[0], MakeImageOverlayColor, false); //사각형 씌우는거
+		drawFaceRectangle(cv_celeb_face_chip, cv_celeb_face_chip, Model::detector(dlib_celeb_face_chip)[0], MakeImageOverlayColor, true); //사각형 씌우는거
+
+		CPputImage(cv_cam_face_chip, I_exportImage, cv::Rect(0, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize)); //아래 작은 이미지에 배치하는거
+		CPputImage(cv_celeb_face_chip, I_exportImage, cv::Rect(MakeImageWidth - MakeImageOverlaySize, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize)); //아래 작은 이미지에 배치하는거
+
+		cv::rectangle(I_exportImage, cv::Rect(0, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 작은거
+		cv::rectangle(I_exportImage, cv::Rect(MakeImageWidth - MakeImageOverlaySize, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 작은거
+	}
+	cv::rectangle(I_exportImage, cv::Rect(0, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 큰거
+	cv::rectangle(I_exportImage, cv::Rect(MakeImageWidth / 2, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 큰거
+
+	//현재 시간 측정해서 가져옴
+	std::string captureDateTimer = getDateTimer();
+	
+	char celebCompare[20];
+	sprintf_s(celebCompare, "%.1f%%", dis2per(celebDistance));
+	CPputText(I_exportImage, captureDateTimer, cvPoint(MakeImageWidth, 0), 2, "맑은 고딕", FW_BOLD, 4, RGBScale(255, 0, 0), RGBScale(255, 255, 255));
+	CPputText(I_exportImage, celebCompare, cvPoint(MakeImageWidth, 95), 2, "맑은 고딕", FW_BOLD, 6, RGBScale(0, 0, 0), RGBScale(255, 255, 255)); //한글로 되게 바꿔야함 (완료)
+
+	CPputText(I_exportImage, "나", cvPoint(MakeImageWidth / 4, 745), 1, "맑은 고딕", FW_BOLD, 6, RGBScale(0, 0, 0), RGBScale(255, 255, 255)); //CanvasWidth / 4 첫번째 사진의 중간
+	CPputText(I_exportImage, celebName, cvPoint(MakeImageWidth / 4 * 3, 745), 1, "맑은 고딕", FW_BOLD, 6, RGBScale(0, 0, 0), RGBScale(255, 255, 255)); //CanvasWidth / 4 * 3 는 2번째 사진의 중간을 가르키기 위해
+
+	//cv::imshow("TestExportImg", I_exportImage);
+	//cv::waitKey();
+
+	return I_exportImage;
 }
 
 bool ImageisAlive(std::string& path) {
@@ -774,6 +802,22 @@ bool ImageisAlive(std::string& path) {
 		std::cout << " 이미지를 찾지 못했습니다." << std::endl;
 		return 0;
 	}
+}
+
+std::string getDateTimer() {
+	std::chrono::system_clock::time_point nowCaptureDate = std::chrono::system_clock::now(); //현재 시간 구하기
+	std::time_t nowCaptureDate_c = std::chrono::system_clock::to_time_t(nowCaptureDate);
+	std::tm nowCaptureDate_tm = {};
+	localtime_s(&nowCaptureDate_tm, &nowCaptureDate_c); //시간으로 변경하는거
+
+	char nowCaptureDateStr[30];
+	sprintf_s(nowCaptureDateStr, "%04d.%02d.%02d %s %02d-%02d-%02d",
+		nowCaptureDate_tm.tm_year + 1900, nowCaptureDate_tm.tm_mon + 1, nowCaptureDate_tm.tm_mday,
+		nowCaptureDate_tm.tm_hour < 12 ? "오전" : "오후",
+		nowCaptureDate_tm.tm_hour % 12 == 0 ? 12 : nowCaptureDate_tm.tm_hour % 12,
+		nowCaptureDate_tm.tm_min, nowCaptureDate_tm.tm_sec); //시간을 년-월-일 오전|오후 시:분:초 로 나타나게 하는 거 ChatGPT가 짜줌
+
+	return nowCaptureDateStr;
 }
 
 void setColor(short textcolor, short background) {
@@ -827,7 +871,7 @@ void GUICon::buttonsCheck(int event, int x, int y, int flags, void* userData) {
 		if (PtInRect(&GUICon::Var::CBR_capture, GUICon::Var::mouse)) { //1번 버튼에서 마우스가 때졌을 때
 			if (GUICon::Var::pushButtonNum == 1) { //1번 버튼이 눌린게 확실해졌을 때
 				if (isUseCapture) {
-					std::cout << "캡쳐 버튼 눌림" << std::endl;
+					std::cout << "CAPTURE 버튼이 눌렸습니다." << std::endl;
 					useCapture = true;
 					capture_start = std::chrono::system_clock::now();
 				}
@@ -835,12 +879,28 @@ void GUICon::buttonsCheck(int event, int x, int y, int flags, void* userData) {
 		}
 		else if (PtInRect(&GUICon::Var::CBR_preview, GUICon::Var::mouse)) { //2번 버튼에서 마우스가 때졌을 때
 			if (GUICon::Var::pushButtonNum == 2) { //2번 버튼이 눌린게 확실해졌을 때
-				std::cout << "2번 버튼 눌림" << std::endl;
+				std::cout << "PREVIEW 버튼이 눌렸습니다." << std::endl;
+				cv::imshow("PREVIEW Image", I_exportImage);
+
+				setColor(COLOR::PURPLE);
+				std::cout << "미리보기 이미지를 띄었습니다. 필요없을 때 닫으시면 됩니다." << std::endl;
+				setColor();
 			}
 		}
 		else if (PtInRect(&GUICon::Var::CBR_export, GUICon::Var::mouse)) { //3번 버튼에서 마우스가 때졌을 때
 			if (GUICon::Var::pushButtonNum == 3) { //3번 버튼이 눌린게 확실해졌을 때
-				std::cout << "3번 버튼 눌림" << std::endl;
+				std::cout << "EXPORT 버튼이 눌렸습니다." << std::endl;
+
+				//파일 이름을 시간으로 해야 이름 중복을 피할 수 있기 때문에 하는거
+				std::string fileDateTimer = getDateTimer() + ".jpg";
+
+				//저장하는거
+				cv::imwrite(exportImagePath + fileDateTimer, I_exportImage);
+
+				std::cout << exportImagePath << fileDateTimer;
+				setColor(COLOR::GREEN);
+				std::cout << " 저장을 완료했습니다." << std::endl;
+				setColor();
 			}
 		}
 			

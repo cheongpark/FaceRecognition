@@ -7,11 +7,11 @@
 #define CheckModel true
 
 //개발 상황에 따라 필요없는건 꺼야 할 수도 있는 것들
-#define CheckCam false //카메라의 유무를 확인 등 카메라 관련 세팅을 보거나 설정할지
-#define UseModelLoad true //모델을 가져올지 안가져올지
-#define UsePreSetImage false //미리 GUI를 세팅하는 것
-#define TransCelebVector false //이미지를 벡터로 바꿀지 안바꿀지 "이거 할 땐 Debug로 안됨 Release로 해야함"
-#define UseOpenCVGUI false //GUI 관련, 제일 메인이 될 것
+#define CheckCam true //카메라의 유무를 확인 등 카메라 관련 세팅을 보거나 설정할지
+#define UseModelAndLogoLoad true //모델을 가져올지 안가져올지
+#define UsePreSetImage true //미리 GUI를 세팅하는 것
+#define TransCelebVector true //이미지를 벡터로 바꿀지 안바꿀지 "이거 할 땐 Debug로 안됨 Release로 해야함"
+#define UseOpenCVGUI true //GUI 관련, 제일 메인이 될 것
 #define UseGetCalTime false //한턴에 어느정도의 시간이 걸리는지 테스트 하기 위한 것
 
 //#define ButtonTest true //버튼 테스트좀 해볼려는거
@@ -33,7 +33,7 @@
 #define MakeImageHeight 803 //출력할 이미지의 세로
 #define MakeImageStartImageY 147 //출력할 이미지에서 대형 큰 이미지가 시작 되는 첫 Y 위치
 #define MakeImageUseOverlay true //출력할 이미지 만들 때 얼굴 사진에서 사각형을 띄울지
-#define MakeImageOverlayColor cv::Scalar(0xFF,0x00,0xFF) //출력할 이미지 만들 때 얼굴 사진에서 사각형의 색깔
+#define MakeImageOverlayColor cv::Scalar(0x00, 0x00, 0xFF) //출력할 이미지 만들 때 얼굴 사진에서 사각형의 색깔
 #define MakeImageOverlaySize 220
 
 //텍스트 출력하는 함수 쓸 때 어느 기준으로 텍스트를 생성할지 정하는거
@@ -76,6 +76,7 @@ using anet_type = dlib::loss_metric< dlib::fc_no_bias<128, dlib::avg_pool_everyt
 
 std::string CelebrityImagePath = "./CelebrityImg"; //연예인 이미지가 있는 폴더
 std::string logoPath = "./logo/logo.jpg"; //나중에 이미지를 만들 때 쓸 세명컴고 로고 이미지 폴더
+std::string exportImagePath = "./ExportImage/"; //내보낼 이미지를 저장하는 경로
 
 std::string SpPath = "./Dlib_Model/shape_predictor_68_face_landmarks_GTX.dat"; //68개의 점을 찍기 때문에 느림 정확도 높음
 std::string FastSpPath = "./Dlib_Model/shape_predictor_5_face_landmarks.dat"; //5개의 점만 찍기 때문에 빠름 정확도 낮음
@@ -83,6 +84,9 @@ std::string ResNetPath = "./Dlib_Model/dlib_face_recognition_resnet_model_v1.dat
 
 bool useCapture = false; //캡쳐 버튼을 눌렀는지 체크하는 변수
 bool isUseCapture = false; //현재 캡쳐가 되고 있는지 저장하는 변수
+
+//내보낼 이미지를 저장하는 곳
+cv::Mat I_exportImage; 
 
 //시간 측정 변수
 std::chrono::system_clock::time_point start_time; //한턴의 시작 시간을 저장
@@ -134,7 +138,7 @@ struct FaceDistance {
 };
 
 //OpenCV 이미지를 OpenCV이미지의 특정 위치에다가 삽입하는 거
-void CPputImage(cv::Mat& I_image, cv::Mat& O_image, cv::Rect pos);
+void CPputImage(cv::Mat I_image, cv::Mat& O_image, cv::Rect pos);
 void CPputImage(dlib::matrix<dlib::rgb_pixel> I_image, cv::Mat& O_image, cv::Rect pos);
 /// <summary>
 /// OpenCV에선 영어만 텍스트를 만들어서 적용이 가능하기 때문에 한글을 위해 윈도우의 다른 곳에서 미리 비트맵으로 이미지를 만들고 OpenCV로 적용하는 방식
@@ -229,10 +233,17 @@ std::string getFileName(std::filesystem::path& path);
 std::vector<FaceDistance> compareFacesImage(cv::Mat& faceImg, std::vector<dlib::matrix<float, 0, 1>>faces_vector);
 //비교된 얼굴들의 거리 값을 정렬할 때 사용하는 함수
 bool face_cmp(FaceDistance a, FaceDistance b);
-//얼굴들과 로고와 이름 등등을 넣으면 이미지로 만들어주는 함수
-void makeCompareImage(cv::Mat& I_camImage, cv::Mat& I_celebImage, FaceDistance& compareDistance, cv::Mat& logo);
+//캡쳐한 이미지와 계산된 이미지를 넣으면 출력 이미지로 만들어주는 함수
+cv::Mat makeCelebCompareImage(cv::Mat& I_camImage, dlib::matrix<dlib::rgb_pixel> I_celebImage, cv::Mat& I_logo, cv::String celebName, float celebDistance);
 //로고 이미지가 있는지 판단하는 것 modelisAlive와 동일한 방식
 bool ImageisAlive(std::string& path);
+//현재의 시간과 날짜를 구하고 리턴
+std::string getDateTimer();
+
+//거리를 퍼센트로 바꿔주는거임.. 근데 바꿔주긴 하는데 실제로 그런 확률은 아님
+float dis2per(float distance) {
+    return (1. - distance) * 100;
+}
 
 //텍스트 컬러 지정 (텍스트 컬러, 배경 컬러)
 void setColor(short textcolor = COLOR::DARK_WHITE, short background = COLOR::BLACK);
