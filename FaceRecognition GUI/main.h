@@ -17,7 +17,7 @@
 //#define ButtonTest true //버튼 테스트좀 해볼려는거
 
 #define LoadImageView true //적용될 이미지를 미리 확인해주게 할지 말지 정하는거
-#define LoadImageViewDelay 100 //이미지를 보여줄 때 너무 빨리 넘어가면 안되니깐 속도를 약간 늦춰주는거
+#define LoadImageViewDelay 0 //이미지를 보여줄 때 너무 빨리 넘어가면 안되니깐 속도를 약간 늦춰주는거
 #define ShowMainView LoadImageView //메인 웹캠 뷰 쪽에 원본 이미지를 보여줄지
 #define MakeExportImage true //나중에 이미지를 따로 저장해서 쓸 수 있게 할지 말지
 
@@ -28,6 +28,7 @@
 #define GUIHeight 1080/2 //세로
 #define CamWidth GUIHeight //카메라를 가져와서 어떤 크기로 저장할지 가로
 #define CamHeight CamWidth //세로
+#define PreViewStartY 180 + 20 //프리뷰 보는 곳의 시작 Y위치
 
 #define MakeImageWidth 1196 //출력할 이미지의 가로
 #define MakeImageHeight 803 //출력할 이미지의 세로
@@ -187,13 +188,27 @@ namespace GUICon {
     }
     //프리뷰 쪽에 이미지 넣는거
     void putPreImageView(cv::Mat& I_image, cv::Mat& O_image) {
-        CPputImage(I_image, O_image, cv::Rect(GUIHeight + 20, 180 + 20, ((GUIWidth - GUIHeight) / 2) - 40, ((GUIWidth - GUIHeight) / 2) - 40));
+        CPputImage(I_image, O_image, cv::Rect(GUIHeight + 20, PreViewStartY, ((GUIWidth - GUIHeight) / 2) - 40, ((GUIWidth - GUIHeight) / 2) - 40));
     }
     void putPreImageView(dlib::matrix<dlib::rgb_pixel> I_image, cv::Mat& O_image) {
         cv::Mat image = dlib::toMat(I_image);
         cv::cvtColor(image, image, cv::COLOR_RGB2BGR);
 
-        CPputImage(image, O_image, cv::Rect(GUIHeight + 20, 180 + 20, ((GUIWidth - GUIHeight) / 2) - 40, ((GUIWidth - GUIHeight) / 2) - 40));
+        CPputImage(image, O_image, cv::Rect(GUIHeight + 20, PreViewStartY, ((GUIWidth - GUIHeight) / 2) - 40, ((GUIWidth - GUIHeight) / 2) - 40));
+    }
+
+    //랭크로 표시될 부분에 텍스트를 넣는 함수들 랭크 1은 프리뷰 바로 아래이고 나머지는 프리뷰 바로 오른쪽
+    void setTextRank1(cv::Mat& I_image, cv::String text, RGBScale color = RGBScale(0xED, 0xED, 0xED)) {
+        CPputText(I_image, text, cv::Point(GUIHeight + 20, PreViewStartY + (((GUIWidth - GUIHeight) / 2) - 40) + 10), OriLeft, "맑은 고딕", FW_BOLD, 3.5, color, BackgroundColor);
+    }
+    void setTextRank2(cv::Mat& I_image, cv::String text, RGBScale color = RGBScale(0xED, 0xED, 0xED)) {
+        CPputText(I_image, text, cv::Point((GUIHeight + 20) + (((GUIWidth - GUIHeight) / 2) - 40) + 20, PreViewStartY + 0), OriLeft, "맑은 고딕", FW_BOLD, 3, color, BackgroundColor);
+    }
+    void setTextRank3(cv::Mat& I_image, cv::String text, RGBScale color = RGBScale(0xED, 0xED, 0xED)) {
+        CPputText(I_image, text, cv::Point((GUIHeight + 20) + (((GUIWidth - GUIHeight) / 2) - 40) + 20, PreViewStartY + 30), OriLeft, "맑은 고딕", FW_BOLD, 3, color, BackgroundColor);
+    }
+    void setTextRank4(cv::Mat& I_image, cv::String text, RGBScale color = RGBScale(0xED, 0xED, 0xED)) {
+        CPputText(I_image, text, cv::Point((GUIHeight + 20) + (((GUIWidth - GUIHeight) / 2) - 40) + 20, PreViewStartY + 60), OriLeft, "맑은 고딕", FW_BOLD, 3, color, BackgroundColor);
     }
 
     void cvRect2RECT(cv::Rect& I_rect, RECT& O_rect); //PtlnRect를 사용하는데 windef.h의 Rect만 되기 때문에 OpenCV로 버튼도 만들어야 하는데 2가지를 다 할려면 각각의 변수가 필요해서

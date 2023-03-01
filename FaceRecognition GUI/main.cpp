@@ -19,9 +19,10 @@ int main(int argv, char* args[]) {
 	cv::Mat I_captureImg; //캡쳐된 이미지를 저장하는 곳
 	cv::Mat I_logoImage; //세명컴고 로고가 저장되어있는 변수
 	cv::Mat I_previewRankCelebImage(100, 100, CV_8UC3); //GUI 에서 프리뷰 나오는 곳에 어떤 얼굴이 제일 닮았는지 표시하기 위해
-	
+
 	//처음에는 이미지가 없기 때문에 검은색으로 처음에 채워주기 위해 하는거
 	I_previewRankCelebImage = cv::Scalar(0x00, 0x00, 0x00);
+	char rank1Text[25] = "", rank2Text[25] = "", rank3Text[25] = "", rank4Text[25] = ""; //랭크를 표시할 때 띄울 텍스트를 저 변수에다 넣는 거임 초기화는 처음에 이상한거 나와서
 
 	bool useFaceLandMark = true; //메인 웹캠뷰 쪽에서 얼굴을 인식해서 빨간 상자를 띄어주는걸 할지 말지
 	
@@ -43,7 +44,9 @@ int main(int argv, char* args[]) {
 		크기 조절 해도 각자 위치에 있을 수 있도록 GUI 배치
 		카메라의 가로가 크다면 세로 크기에 맞춰서 정사각형으로 자르고 세로가 크면 그 반대로 웹캠을 잘라주는 기능
 		카메라에서 얼굴을 찾아서 사각형으로 어느 위치에 있는지 표시해주는 기능
-
+		얼굴과 연예인 얼굴을 벡터로 변경해서 어느정도 거리인지 유클리드 거리로 찾는 것 (중요)
+		매번 출력될 화면을 계속 생성하는 건 성능에도 무리가 되고 시간도 걸릴 수 있어 미리 고정 위치에 있을 이미지는 미리 만들고 필요할때마다 요청하는 방식 기능
+		각 랭크마다 텍스트 출력
 	*/
 
 	/*
@@ -219,6 +222,8 @@ int main(int argv, char* args[]) {
 		int celebCount = 0; //연예인 몇명인지 이미지중 얼굴이 여러개도 있을 수 있기 때문에 그걸 걸러내기 위해 경로 갯수로 하는게 아님
 
 		for (std::filesystem::path celeb_path : celeb_paths) {
+			preSetImage.copyTo(frame); //미리 준비된 이미지를 frame에 넣는거 frame은 표시할꺼 속도를 빠르게 하기위해서 미리 만든 걸 넣는거
+			
 			dlib::matrix<dlib::rgb_pixel> I_celeb_img;
 
 			dlib::load_image(I_celeb_img, celeb_path.string());
@@ -265,6 +270,8 @@ int main(int argv, char* args[]) {
 						}
 					}
 					GUICon::putPreImageView(I_face_chip, frame);
+					GUICon::setTextRank1(frame, getFileName(celeb_path)); //랭크 표시 부분에 프리뷰의 사람이 누구인지 표시하는 것
+
 					cv::imshow(WinName, frame);
 					cv::waitKey(20);
 					Sleep(LoadImageViewDelay);
@@ -359,6 +366,12 @@ int main(int argv, char* args[]) {
 				//프리뷰 이미지쪽에 어떤 연예인이 가장 닮았는지 표시하기 위한거
 				GUICon::putPreImageView(I_previewRankCelebImage, frame);
 
+				//측정한 뒤에도 정보를 계속 출력하기 위해 
+				GUICon::setTextRank1(frame, rank1Text); //첫번째 랭크 출력
+				GUICon::setTextRank2(frame, rank2Text); //두번째 랭크 출력
+				GUICon::setTextRank3(frame, rank3Text); //세번째 랭크 출력
+				GUICon::setTextRank4(frame, rank4Text); //네번째 랭크 출력
+
 				//캡쳐 버튼이 눌리면 사진을 캡쳐하고 얼굴을 비교함
 				if (useCapture) {
 					capture_start_now = std::chrono::system_clock::now(); //현재의 시간을 저장
@@ -388,7 +401,6 @@ int main(int argv, char* args[]) {
 
 							std::vector<FaceDistance>faces_distance = compareFacesImage(I_captureImg, celeb_faces_128_vector); //이미지와 연예인 벡터 값을 넣어서 거리를 비교해서 정렬된 값을 가져와 저장하는 것
 
-							//cv::Mat I_celebImg = dlib::toMat(I_celeb_faces[faces_distance[0].faceNum]); //함수에서 쓸 수 있도록 dlib 이미지를 cv::Mat 이미지로
 							I_exportImage = makeCelebCompareImage(I_captureImg, I_celeb_faces[faces_distance[0].faceNum], I_logoImage, S_celeb_names[faces_distance[0].faceNum], faces_distance[0].faceDistance); //이미지 만들어주는 함수임
 							//어떤 얼굴이 제일 닮았는지 표시하기 위한 거
 							//이미지의 길이에 맞춰 배경 생성하고 색 넣기
@@ -412,11 +424,22 @@ int main(int argv, char* args[]) {
 
 							//GUI에 순위를 표시해주는 것
 							//등수를 GUI 내에서도 표시해야함
+							//각각 마동석 100.00% 이런식으로 char에 만들고 그걸 넣는 출력하는 방식임
+							//여기에서 콘솔창에 4명정도를 퍼센트와 이름을 띄우고 각 텍스트 변수에도 새로 저장하게 만드는 것
+							
 							setColor(COLOR::AQUA);
-							std::cout << S_celeb_names[faces_distance[0].faceNum] << dis2per(faces_distance[0].faceDistance) << std::endl;
-							std::cout << S_celeb_names[faces_distance[1].faceNum] << dis2per(faces_distance[1].faceDistance) << std::endl;
-							std::cout << S_celeb_names[faces_distance[2].faceNum] << dis2per(faces_distance[2].faceDistance) << std::endl;
-							std::cout << S_celeb_names[faces_distance[3].faceNum] << dis2per(faces_distance[3].faceDistance) << std::endl;
+							sprintf_s(rank1Text, "%s %.2f%%", S_celeb_names[faces_distance[0].faceNum].c_str(), dis2per(faces_distance[0].faceDistance));
+							std::cout << rank1Text << std::endl;
+							
+							sprintf_s(rank2Text, "%s %.2f%%", S_celeb_names[faces_distance[1].faceNum].c_str(), dis2per(faces_distance[1].faceDistance));
+							std::cout << rank2Text << std::endl;
+
+							sprintf_s(rank3Text, "%s %.2f%%", S_celeb_names[faces_distance[2].faceNum].c_str(), dis2per(faces_distance[2].faceDistance));
+							std::cout << rank3Text << std::endl;
+
+							sprintf_s(rank4Text, "%s %.2f%%", S_celeb_names[faces_distance[3].faceNum].c_str(), dis2per(faces_distance[3].faceDistance));
+							std::cout << rank4Text << std::endl;
+							
 							setColor();
 
 							useCapture = false; //모든 작업이 끝났기 때문에 캡쳐를 종료
@@ -571,8 +594,7 @@ void CPputText(cv::Mat& O_image, cv::String text, cv::Point org, int ori, const 
 void GUIInitImage(cv::Mat& O_image) {
 	O_image = cv::Scalar(BackgroundColor.b, BackgroundColor.g, BackgroundColor.r); //배경 색을 약간 어두운 색으로 칠해주는 것
 	cv::line(O_image, cv::Point(O_image.rows, 0), cv::Point(O_image.rows, O_image.rows), cv::Scalar(0x37, 0x00, 0xDA), 2); //카메라 보여질 부분과 정보 보여질 부분을 나눠주는 선
-	cv::rectangle(O_image, cv::Rect(GUIHeight + 20, 180 + 20, ((GUIWidth - GUIHeight) / 2) - 40, ((GUIWidth - GUIHeight) / 2) - 40), cv::Scalar(0xED, 0xED, 0xED), 1 + 2, 4, 0); //프리뷰쪽 테투리 쳐주는거 1 + 2에서 2가 선 두께임
-
+	cv::rectangle(O_image, cv::Rect(GUIHeight + 20, PreViewStartY, ((GUIWidth - GUIHeight) / 2) - 40, ((GUIWidth - GUIHeight) / 2) - 40), cv::Scalar(0xED, 0xED, 0xED), 1 + 2, 4, 0); //프리뷰쪽 테투리 쳐주는거 1 + 2에서 2가 선 두께임
 
 	CPputText(O_image, "Face Recognition", cv::Point(O_image.cols - ((O_image.cols - O_image.rows) / 2), 30), OriCenter, "맑은 고딕", FW_BOLD, 6, RGBScale(0xED, 0xED, 0xED), BackgroundColor);
 
