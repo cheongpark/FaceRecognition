@@ -765,8 +765,8 @@ cv::Mat makeCelebCompareImage(cv::Mat& I_camImage, dlib::matrix<dlib::rgb_pixel>
 	cv::Mat cv_celeb_face_chip = dlib::toMat(celeb_face_chip); //openCV의 Mat로 변경하는 거
 
 	CPputImage(I_logo, I_exportImage, cv::Rect(0, 0, 535, 147)); //로고 집어넣는거
-	CPputImage(cv_cam_face_chip, I_exportImage, cv::Rect(0, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2)); //왼쪽꺼
-	CPputImage(cv_celeb_face_chip, I_exportImage, cv::Rect(MakeImageWidth / 2, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2)); //출력할 이미지에서 크게 오른쪽에 이미지 넣은거
+	CPputImage(cv_cam_face_chip, I_exportImage, cv::Rect(0 + 1, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2)); //왼쪽꺼
+	CPputImage(cv_celeb_face_chip, I_exportImage, cv::Rect(MakeImageWidth / 2 - 1, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2)); //출력할 이미지에서 크게 오른쪽에 이미지 넣은거
 
 	if (MakeImageUseOverlay) {
 		//얼굴 이미지에서 작게 어느 위치에 얼굴이 있는지 표시하는거
@@ -787,22 +787,23 @@ cv::Mat makeCelebCompareImage(cv::Mat& I_camImage, dlib::matrix<dlib::rgb_pixel>
 		CPputImage(cv_cam_face_chip, I_exportImage, cv::Rect(0, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize)); //아래 작은 이미지에 배치하는거
 		CPputImage(cv_celeb_face_chip, I_exportImage, cv::Rect(MakeImageWidth - MakeImageOverlaySize, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize)); //아래 작은 이미지에 배치하는거
 
-		cv::rectangle(I_exportImage, cv::Rect(0, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 작은거
-		cv::rectangle(I_exportImage, cv::Rect(MakeImageWidth - MakeImageOverlaySize, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 작은거
+		cv::rectangle(I_exportImage, cv::Rect(0, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize), cv::Scalar(0xC1, 0x7F, 0xF9), 3, 4, 0); //구분선 작은거
+		cv::rectangle(I_exportImage, cv::Rect(MakeImageWidth - MakeImageOverlaySize, MakeImageStartImageY + (MakeImageWidth / 2) - MakeImageOverlaySize, MakeImageOverlaySize, MakeImageOverlaySize), cv::Scalar(0xC1, 0x7F, 0xF9), 3, 4, 0); //구분선 작은거
 	}
-	cv::rectangle(I_exportImage, cv::Rect(0, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 큰거
-	cv::rectangle(I_exportImage, cv::Rect(MakeImageWidth / 2, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2), cv::Scalar(0, 0, 0), 3, 4, 0); //구분선 큰거
+	cv::rectangle(I_exportImage, cv::Rect(0 + 1, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2), cv::Scalar(0xC1, 0x7F, 0xF9), 3, 4, 0); //구분선 큰거
+	cv::rectangle(I_exportImage, cv::Rect(MakeImageWidth / 2 - 1, MakeImageStartImageY, MakeImageWidth / 2, MakeImageWidth / 2), cv::Scalar(0xC1, 0x7F, 0xF9), 3, 4, 0); //구분선 큰거
 
 	//현재 시간 측정해서 가져옴
 	std::string captureDateTimer = getDateTimer();
 	
 	char celebCompare[20];
 	sprintf_s(celebCompare, "%.1f%%", dis2per(celebDistance));
-	CPputText(I_exportImage, captureDateTimer, cvPoint(MakeImageWidth, 0), 2, "맑은 고딕", FW_BOLD, 4, RGBScale(255, 0, 0), RGBScale(255, 255, 255));
-	CPputText(I_exportImage, celebCompare, cvPoint(MakeImageWidth, 95), 2, "맑은 고딕", FW_BOLD, 6, RGBScale(0, 0, 0), RGBScale(255, 255, 255)); //한글로 되게 바꿔야함 (완료)
+	CPputText(I_exportImage, captureDateTimer, cvPoint(MakeImageWidth, 0), 2, "맑은 고딕", FW_BOLD, 4, RGBScale(0x83, 0x83, 0x83), RGBScale(0xFF, 0xFF, 0xFF));
+	CPputText(I_exportImage, celebCompare, cvPoint(MakeImageWidth, 95), 2, "맑은 고딕", FW_BOLD, 6, RGBScale(0x00, 0x00, 0x00), RGBScale(0xFF, 0xFF, 0xFF)); //한글로 되게 바꿔야함 (완료)
+	CPputText(I_exportImage, "인공지능 소프트웨어과", cvPoint(MakeImageWidth, 40), 2, "맑은 고딕", FW_BOLD, 4, RGBScale(0x0B, 0xA8, 0xDA), RGBScale(0xFF, 0xFF, 0xFF)); //인공지능 소프트웨어과 출력
 
-	CPputText(I_exportImage, "나", cvPoint(MakeImageWidth / 4, 745), 1, "맑은 고딕", FW_BOLD, 6, RGBScale(0, 0, 0), RGBScale(255, 255, 255)); //CanvasWidth / 4 첫번째 사진의 중간
-	CPputText(I_exportImage, celebName, cvPoint(MakeImageWidth / 4 * 3, 745), 1, "맑은 고딕", FW_BOLD, 6, RGBScale(0, 0, 0), RGBScale(255, 255, 255)); //CanvasWidth / 4 * 3 는 2번째 사진의 중간을 가르키기 위해
+	CPputText(I_exportImage, "나", cvPoint(MakeImageWidth / 4, 745), 1, "맑은 고딕", FW_BOLD, 6, RGBScale(0x00, 0x00, 0x00), RGBScale(0xFF, 0xFF, 0xFF)); //CanvasWidth / 4 첫번째 사진의 중간
+	CPputText(I_exportImage, celebName, cvPoint(MakeImageWidth / 4 * 3, 745), 1, "맑은 고딕", FW_BOLD, 6, RGBScale(0x00, 0x00, 0x00), RGBScale(0xFF, 0xFF, 0xFF)); //CanvasWidth / 4 * 3 는 2번째 사진의 중간을 가르키기 위해
 
 	//cv::imshow("TestExportImg", I_exportImage);
 	//cv::waitKey();
